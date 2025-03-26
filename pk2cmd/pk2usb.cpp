@@ -37,7 +37,7 @@
 #if HAVE_LIBUSB_INTERRUPT_MODE
 // latest libusb: interrupt mode, works with all kernels
 #  define PICKIT_USB(direction) usb_interrupt_##direction
-#else 
+#else
 // older libusb: bulk mode, will only work with older kernels
 #  define PICKIT_USB(direction) usb_bulk_##direction
 #endif
@@ -108,6 +108,9 @@ int sendUSB(pickit_dev *d, byte *src, int len)
 		fflush(usbFile);
 	}
 
+	/* workaround for contemporary linux (in 2025, kernel 6.1.x), debian based. Root cause unknown. */
+	usleep(1000);
+
 	r = PICKIT_USB(write)(d, pickit_endpoint_out, (char *) src, reqLen, pickit_timeout);
 
 	if (rescan)		// Microchip code entered/exited bootloader,
@@ -146,7 +149,7 @@ int readBlock(pickit_dev *d, int len, byte *dest)
 			printf("USB read did not return 64 bytes\n");
 			fflush(stdout);
 		}
-                writeStatus = writeTimeout;
+        writeStatus = writeTimeout;
 		return 0;
 	}
 	if (verbose)
@@ -333,11 +336,11 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
 										printf("Error setting USB configuration.\n");
 										fflush(stdout);
 									}
-	
+
 									return NULL;
 								}
 							}
-	
+
 							if (usb_claim_interface(d, pickit_interface))
 							{
 								if (verbose)
@@ -347,7 +350,7 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
 										"You may need to `rmmod hid` or patch your kernel's hid driver.\n");
 									fflush(stdout);
 								}
-	
+
 								return NULL;
 							}
 						}
@@ -412,7 +415,7 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
                                 retData[32] != '3')
                             {
                                 if (verbose)
-                                {    
+                                {
                                      printf("Incompatible PICkit3 firmware detected\n");
                                      printf("Please, upgrade the firmware using PICkitminus Windows GUI software.\n");
                                      fflush(stdout);
@@ -426,7 +429,7 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
                                 {
                                     pickit_mode = MPLAB_MODE;
                                 }
-                                
+
                                 //usb_close(deviceHandle);
                                 //return NULL;
                             }
@@ -443,10 +446,10 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
                             //    pickit_firmware = (((int) retData[33]) << 16) | ((((int) retData[34]) << 8) & 0xff00) | (((int) retData[35]) & 0xff);
                             //}
                         }
-                        
+
                         return d;
 					}
-					else 
+					else
 					{
 						if (verbose)
 						{
