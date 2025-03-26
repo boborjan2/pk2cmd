@@ -47,9 +47,7 @@
 #define	USB_DEBUG_FLAGS		0	// No USB debugging by default
 
 #ifndef __APPLE__
-#include	<usb.h>	// Linux
-typedef struct usb_dev_handle pickit_dev;
-extern usb_dev_handle	*deviceHandle;
+typedef void *pickit_dev;
 #else		// Mac OSX
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -70,8 +68,8 @@ struct hidreport {
 typedef struct hidreport pickit_dev;
 typedef struct hidreport *hidreport_t;
 
-extern pickit_dev	*deviceHandle;
 #endif  // Mac OSX
+extern pickit_dev	*deviceHandle;
 
 #define	byte		unsigned char
 #define	uint		unsigned int
@@ -163,7 +161,6 @@ typedef enum
 extern PickitWriteStatus_t writeStatus;
 
 extern bool	verbose;
-extern int	pickit_interface;
 extern int	pickit_mode;
 extern int	usbdebug;
 extern int	pickit_firmware;
@@ -221,9 +218,7 @@ extern int recvUSB(pickit_dev *d, int len, byte *dest);
 // Open the pickit as a usb device.  Aborts on errors.
 extern pickit_dev *usbPickitOpen(int unitIndex, char *id);
 
-#ifdef __APPLE__
-extern void usb_release_interface(pickit_dev *deviceHandle, int pickit_interface);
-#endif
+extern void releaseUSB(pickit_dev *d);
 
 #endif  // _PK2USB_H
 

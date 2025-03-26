@@ -69,7 +69,7 @@ struct recordEntry
 	long	maxReport;
 	long	userMin;
 	long	userMax;
-    
+
 	struct recordEntry	*previous;
 	struct recordEntry	*child;
 	struct recordEntry	*sibling;
@@ -111,7 +111,7 @@ struct deviceRecord
 
 pickit_dev	*deviceHandle;
 char	PK2UnitIDString[32];
-
+static int pickit_interface = 0;
 /*
  * 	  Private functions
  */
@@ -312,12 +312,12 @@ static IOHIDDeviceInterface122 **find_device(SInt32 vendor, SInt32 product, int 
 		set_number_to_dictionary(dict3, CFSTR(kIOHIDVendorIDKey),  0x04d8);
 		set_number_to_dictionary(dict3, CFSTR(kIOHIDProductIDKey), 0x900a);
 		service3 = IOServiceGetMatchingServices(kIOMasterPortDefault, dict3, &usbIter3);
-	
+
 		if (service3 != 0)
 			return NULL;
-	
+
 		IOIteratorReset(usbIter3);
-	
+
 		while ((usbDevice = IOIteratorNext(usbIter3)))
 		{
 			if(index++ == unit)
@@ -326,7 +326,7 @@ static IOHIDDeviceInterface122 **find_device(SInt32 vendor, SInt32 product, int 
 				deviceType = Pickit3;
 				break;
 			}
-	
+
 			IOObjectRelease(usbDevice);
 		}
 	}
@@ -337,9 +337,9 @@ static IOHIDDeviceInterface122 **find_device(SInt32 vendor, SInt32 product, int 
 		set_number_to_dictionary(dictp, CFSTR(kIOHIDVendorIDKey),  0x04d8);
 		set_number_to_dictionary(dictp, CFSTR(kIOHIDProductIDKey), 0x8107);
 		servicep = IOServiceGetMatchingServices(kIOMasterPortDefault, dictp, &usbIterp);
-	
+
 		if (servicep != 0)
-			return NULL;	
+			return NULL;
 
 		IOIteratorReset(usbIterp);
 
@@ -603,7 +603,7 @@ pickit_dev *usbPickitOpen(int unit, char *id)
 		pickit2 = hidreport_open(0x04d8, 0x900a, REPORT_SIZE, unit);		// 0x04d8, 0x900a PICkit3
 		if (pickit2 != NULL)
 			deviceType = Pickit3;
-	
+
 		if (pickit2 == NULL) {
 			pickit2 = hidreport_open(0x04d8, 0x8107, REPORT_SIZE, unit);	// 0x04d8, 0x8017 PKOB3
 			if (pickit2 != NULL)
@@ -611,7 +611,7 @@ pickit_dev *usbPickitOpen(int unit, char *id)
 		}
 	}
 	else
-		deviceType = Pickit2; 
+		deviceType = Pickit2;
 	// END JAKA
 */
 	if (pickit2 != NULL)			// found it
@@ -644,7 +644,7 @@ pickit_dev *usbPickitOpen(int unit, char *id)
 //	return(deviceHandle);
 }
 
-void usb_release_interface(pickit_dev *deviceHandle, int pickit_interface)
+void releaseUSB(pickit_dev *deviceHandle)
 {
 	if (deviceHandle != NULL)
 		hidreport_close(deviceHandle);
@@ -655,4 +655,3 @@ void usb_release_interface(pickit_dev *deviceHandle, int pickit_interface)
 #endif // ifndef WIN32
 
 // EOF
-

@@ -24,7 +24,7 @@ OBJS=cmd_app.o DeviceData.o DeviceFile.o ImportExportHex.o PICkitFunctions.o PIC
 
 # Grab the version of libusb in /usr/local if possible:
 LIBUSB=/usr/local
-LDFLAGS=-L$(LIBUSB)/lib -lusb
+LDFLAGS=-L$(LIBUSB)/lib -lusb-1.0
 
 # CHOOSE A TARGET BEFORE COMPILING
 #

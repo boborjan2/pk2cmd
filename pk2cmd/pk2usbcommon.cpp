@@ -46,7 +46,6 @@ int	pickit_mode = 0;
 int	pickit_firmware = 0;
 int	targetPower = 0;
 
-int	pickit_interface = 0;
 int	usbdebug = USB_DEBUG_FLAGS;
 FILE	*usbFile = NULL;
 
@@ -585,7 +584,7 @@ void pickitOff(pickit_dev *d)
 
 CUsbhidioc::CUsbhidioc(void)
 {
-	m_UnitID[0] = 0; 
+	m_UnitID[0] = 0;
 }
 
 char *CUsbhidioc::GetPK2UnitID(void)
@@ -649,10 +648,8 @@ void CUsbhidioc::CloseReport(void)
 {
 	if (deviceHandle)
 	{
-
-        usb_release_interface(deviceHandle, pickit_interface);
+		releaseUSB(deviceHandle);
 		deviceHandle = NULL;
-		pickit_interface = 0;
 	}
 }
 

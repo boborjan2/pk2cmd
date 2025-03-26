@@ -76,7 +76,7 @@ int recvUSB(pickit_dev *d, int len, unsigned char *dest);
 
 pickit_dev *usbPickitOpen(int unit, char *id);
 
-void usb_release_interface(pickit_dev *deviceHandle, int pickit_interface);
+void releaseUSB(pickit_dev *d);
 
 #endif
 
