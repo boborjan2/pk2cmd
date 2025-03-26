@@ -6,9 +6,15 @@
 #pragma once
 
 #define	VERSION_MAJOR	1
-#define	VERSION_MINOR	21
-#define	VERSION_DOT	    0
+#define	VERSION_MINOR	26
+#define	VERSION_DOT	5
 
+// #define OLDSTYLE_MSB1ST_SETADDR		// If defined, use the old version of set address scipt for MSB1st families
+									// Has limitation of 128 kB FLASH for PIC18F devices (no bigger devices 
+									// available currently though). Also slower, because loops address increment command.
+									// NOTE! Probably doesn't work correctly with PIC18F atm, oldstyle set address script
+                                    // sets 2x address! If you really need/want to use this define, probably need to fix
+                                    // address setting either in software or create a new address set script for PIC18F!
 #ifdef WIN32
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
@@ -54,10 +60,12 @@ extern int	fopen_s(FILE **fp, char *path, const char *spec);
 
 #endif
 
+#ifndef __APPLE__  // defining bool to char causes compile problem on OSX 10.13, maybe also on other versions
 // Not all compilers define 'bool' to have the same size, so we force it here.
 #ifdef bool
 #undef bool
 #endif
 #define	bool	unsigned char
+#endif // APPLE
 
 // TODO: reference additional headers your program requires here

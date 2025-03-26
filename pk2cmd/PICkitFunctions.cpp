@@ -16,6 +16,7 @@
 //
 //---------------------------------------------------------------------------
 #include "stdafx.h"
+#include "stdlib.h"
 #include "PICkitFunctions.h"
 #include "PIC32PE.h"
 #include "dsP33_PE.h"
@@ -32,13 +33,14 @@ CPICkitFunctions::CPICkitFunctions(void)
 	OverwriteOSCCAL = false;
 	scriptBufferChecksum = 0xFFFFFFFF;
 	DeviceBuffers = &DevBuffs;
-	BlankBuffers = &BlnkBuffs;
+    BlankBuffers = &BlnkBuffs;
 	LastICSPSpeed = 0;
 	usePE33 = true;
 	printedUsingPE = false;
 	deviceRevision = 0;
 	usePercentTimer = false;
 	useTimerNewlines = false;
+    skipBlankSections = true;
 	timerOperation = NULL;
 	timerIncrement = 0;
 	timerValue = 0;
@@ -67,6 +69,32 @@ const unsigned char CPICkitFunctions::BitReverseTable[256] =
 		0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7, 
 		0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 	};
+
+//$$$Bequest333
+unsigned short reverse16Bits(unsigned short v)
+{
+    v = ((v & 0x0000ff00) >> 8) | ((v & 0x000000ff) << 8);
+    v = ((v & 0x0000f0f0) >> 4) | ((v & 0x00000f0f) << 4);
+    v = ((v & 0x0000cccc) >> 2) | ((v & 0x00003333) << 2);
+    v = ((v & 0x0000aaaa) >> 1) | ((v & 0x00005555) << 1);
+    return v;
+}
+//$$$
+
+// JAKA:
+unsigned short swap2Bytes(unsigned short v)
+{
+    return ((v << 8) & 0xff00) | ((v >> 8) & 0x00ff);
+}
+
+unsigned short reverse8Bits(unsigned short b)
+{
+    b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4);
+    b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2);
+    b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1);
+    return b;
+}
+// end JAKA
 
 int CPICkitFunctions::ReadPkStatus(void)
 {
@@ -178,7 +206,9 @@ unsigned int CPICkitFunctions::ComputeChecksum(void)
             // config words
             for (int idx = 0; idx < DevFile.PartsList[ActivePart].ConfigWords; idx++)
             {
-                unsigned int memWord = (DeviceBuffers->ConfigWords[idx] & DevFile.PartsList[ActivePart].ConfigMasks[idx]);
+                unsigned int memWord = DeviceBuffers->ConfigWords[idx];
+                if (idx < 9)
+                    memWord &= DevFile.PartsList[ActivePart].ConfigMasks[idx];
                 checksum += (memWord & 0x000000FF);
                 checksum += ((memWord >> 8) & 0x000000FF);
             }
@@ -197,12 +227,20 @@ unsigned int CPICkitFunctions::ReadDeviceID(void)
 	RunScript(SCR_RD_DEVID, 1);
 	UploadData();
 	RunScript(SCR_PROG_EXIT, 1);
-    unsigned int deviceID = (unsigned int)(Usb_read_array[2] * 256 + Usb_read_array[1]);
+    unsigned int deviceID = (unsigned int)(Usb_read_array[4] * 16777216 + Usb_read_array[3] * 65536 + Usb_read_array[2] * 256 + Usb_read_array[1]);
+    
     for (int shift = 0; shift < DevFile.Families[ActiveFamily].ProgMemShift; shift++)
     {
         deviceID >>= 1;         // midrange/baseline part results must be shifted by 1
     }
-	deviceID &= DevFile.Families[ActiveFamily].BlankValue;
+    if (DevFile.Families[ActiveFamily].DeviceIDMask < DevFile.Families[ActiveFamily].BlankValue)
+    {
+        deviceID &= DevFile.Families[ActiveFamily].BlankValue;
+    }
+    else
+    {
+        deviceID &= DevFile.Families[ActiveFamily].DeviceIDMask;    // Needed for e.g. SPI FLASH devices
+    }
 
 	// Get device revision
 	if (Usb_read_array[0] == 4)  // 16-bit/32-bit parts have Rev in separate word
@@ -218,6 +256,31 @@ unsigned int CPICkitFunctions::ReadDeviceID(void)
 
 	deviceID &= DevFile.Families[ActiveFamily].DeviceIDMask; // mask off version bits.
 
+    if (FamilyIsEEPROM()
+        && (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS))  // Reverse SPI FLASH JEDEC DEVID and MFG ID byte order for better readability
+    {
+        deviceID = ((deviceID << 16) & 0x00ff0000) | (deviceID & 0x0000ff00) | ((deviceID >> 16) & 0x000000ff);
+    }
+
+
+    // JAKA
+    //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st")
+    if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0)
+    {
+        deviceID = reverse16Bits(deviceID);
+        deviceID >>= 2;
+        deviceRevision = (int)reverse16Bits((unsigned short)(deviceRevision));
+        deviceRevision >>= 2;
+    }
+    //if (DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+    if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+    {
+        deviceID = reverse16Bits(deviceID);
+        deviceRevision = (int)reverse16Bits((unsigned short)(deviceRevision));
+    }
+    // END JAKA
+
+
 	VddOff();
 	SetMCLR(false);   
 
@@ -231,7 +294,7 @@ unsigned int CPICkitFunctions::GetDeviceRevision(void)
 
 bool CPICkitFunctions::FamilyIsKeeloq(void)
 {
-	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "KEELOQ", 6);
+	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Others/KEELOQ", 13);
 	if (x == 0)
 		return true;
 	return false;
@@ -240,7 +303,7 @@ bool CPICkitFunctions::FamilyIsKeeloq(void)
 
 bool CPICkitFunctions::FamilyIsEEPROM(void)
 {  
-	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "EEPROM", 6);
+	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "EEPROMS", 7);
 	if (x == 0)
 		return true;
 	return false;
@@ -248,7 +311,7 @@ bool CPICkitFunctions::FamilyIsEEPROM(void)
 
 bool CPICkitFunctions::FamilyIsMCP(void)
 {  
-	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "MCP", 3);
+	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Others/MCP", 10);
 	if (x == 0)
 		return true;
 	return false;
@@ -260,6 +323,30 @@ bool CPICkitFunctions::FamilyIsPIC32(void)
 	if (x == 0)
 		return true;
 	return false;
+}
+
+bool CPICkitFunctions::NewStyleConfigs(void)
+{
+    if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 160
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 176
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 192
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 224
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 240)
+        return true;
+    else
+        return false;
+}
+
+bool CPICkitFunctions::PartHasCustomerOTP(void)
+{
+    if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 160
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 176
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 192
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 224
+        || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 240)
+        return true;
+    else
+        return false;
 }
 
 bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool cfgmem, bool useLowVoltageRowErase)
@@ -312,11 +399,33 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 		}
 
         RunScript(SCR_PROG_ENTRY, 1);
-
+        /*  // Commented out below progmem erase code. Would require more than this, since
+            // progmem script erases also user id and configuration memories.
+        if (!eemem && !uidmem)
+        {
+            if (DevFile.PartsList[ActivePart].ProgMemEraseScript != 0)
+            { // If programming only Progmem, erase it before write
+                printf("Bulk erase program memory before write..\n");
+                RunScript(SCR_ERASE_EE, 1);
+            }
+            else
+            {
+                printf("Program memory erase script not available for this part.\n");
+                printf("Program memory will not be erased before write.\n");
+            }
+        }
+        */
         if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
         { // if prog mem address set script exists for this part
             DownloadAddress3(0);
             RunScript(SCR_PROGMEM_WR_PREP, 1);
+            // On some newer PIC24 devices, the first write prep after prog.entry fails for some reason
+            // As workaround, set it twice.
+            if (DevFile.Families[ActiveFamily].BlankValue == 0xFFFFFF)
+            {
+                DownloadAddress3(0);
+                RunScript(SCR_PROGMEM_WR_PREP, 1);
+            }
         }
         if (FamilyIsKeeloq())
         {
@@ -329,6 +438,16 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
             (wordsPerWrite * bytesPerWord);
         int wordsPerLoop = scriptRunsToUseDownload * wordsPerWrite;
         int wordsWritten = 0;
+
+        // PIC24/dsPIC: handle cases where wordsPerWrite would cause TBLPAG update to not happen at 0x8000
+        if (DevFile.Families[ActiveFamily].BlankValue == 0xFFFFFF)
+        {
+            while ((0x8000 % wordsPerLoop) != 0)
+            {
+                wordsPerLoop--;
+            }
+            scriptRunsToUseDownload = wordsPerLoop / wordsPerWrite;
+        }
 
         // Find end of used memory
         endOfBuffer = FindLastUsedInBuffer(DeviceBuffers->ProgramMemory,
@@ -370,9 +489,13 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 		else
 		{
 			timerStart((_TCHAR*)"Write Flash", endOfBuffer / wordsPerLoop);
-			do
+            bool wholeChunkIsBlank = true;
+            bool previousChunkWasBlank = true;
+
+            do
 			{
 				int downloadIndex = 0;
+                wholeChunkIsBlank = true;
 				for (int word = 0; word < wordsPerLoop; word++)
 				{
 					if (wordsWritten == endOfBuffer)
@@ -380,11 +503,26 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 						break; // for cases where ProgramMemSize%WordsPerLoop != 0
 					}                             
 					unsigned int memWord = DeviceBuffers->ProgramMemory[wordsWritten++];
-					if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
+					
+                    if (memWord != DevFile.Families[ActiveFamily].BlankValue)
+                    {
+                        wholeChunkIsBlank = false;
+                    }
+
+                    if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
 					{
 						memWord = memWord << 1;
 					}
 	                
+                    //$$$Bequest333 and JAKA
+                    if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                        _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+                    {
+                        memWord = reverse16Bits(memWord);
+                    }
+                    //$$$
+
+
 					downloadBuffer[downloadIndex++] = (unsigned char) (memWord & 0xFF);
 	                
 					for (int bite = 1; bite < bytesPerWord; bite++)
@@ -395,24 +533,43 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 
 				}
 				// download data
-				if (FamilyIsKeeloq())
-				{
-					processKeeloqData(downloadBuffer, wordsWritten);
-				}
-				int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
-				while (dataIndex < downloadIndex)
-				{
-					dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
-				}
-	            
-				RunScript(SCR_PROGMEM_WR, scriptRunsToUseDownload);
+                if (!wholeChunkIsBlank || DevFile.PartsList[ActivePart].ProgMemAddrSetScript == 0 || skipBlankSections == false || FamilyIsMCP())     // JAKA - Upload data only if it's not completely blank
+                {
+                    if (DevFile.PartsList[ActivePart].ProgMemAddrSetScript != 0 && skipBlankSections == true && !FamilyIsMCP())
+                        // && (DevFile.PartsList[ActivePart].ProgMemAddrBytes != 0))
+                    { // if prog mem address set script exists for this part
+                        if (previousChunkWasBlank)
+                        {   // set PC if prevoius chunk was not written
+                            DownloadAddress3((wordsWritten - wordsPerLoop) * DevFile.Families[ActiveFamily].AddressIncrement);
+                            if (DevFile.Families[ActiveFamily].BlankValue == 0xFFFFFF)
+                                RunScript(SCR_PROGMEM_WR_PREP, 1);	// PIC24 (maybe others?) need to use WR_PREP when writing, and ADDRSET when reading 
+                            else
+                                RunScript(SCR_PROGMEM_ADDRSET, 1);	// Many PICs can use ADDRSET also when writing.
+                        }
+                    }
+                    if (FamilyIsKeeloq())
+                    {
+                        processKeeloqData(downloadBuffer, wordsWritten);
+                    }
+                    int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
+                    while (dataIndex < downloadIndex)
+                    {
+                        dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
+                    }
 
-				if (((wordsWritten % 0x8000) == 0) && (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0))
-				{ //PIC24 must update TBLPAG
-					DownloadAddress3(0x10000 * (wordsWritten / 0x8000));
-					RunScript(SCR_PROGMEM_WR_PREP, 1);
-				}
+                    RunScript(SCR_PROGMEM_WR, scriptRunsToUseDownload);
+                }
+
+                //if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) != 0)	// JAKA - do not re-write write prep script for PIC18F with large memory - it fails.
+                //{
+                    if (((wordsWritten % 0x8000) == 0) && (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0))
+                    { //PIC24 must update TBLPAG
+                        DownloadAddress3(0x10000 * (wordsWritten / 0x8000));
+                        RunScript(SCR_PROGMEM_WR_PREP, 1);
+                    }
+                //}
 	       
+                previousChunkWasBlank = wholeChunkIsBlank;
 				timerPrint();
 			} while (wordsWritten < endOfBuffer);
 
@@ -436,6 +593,15 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
     {
 
         RunScript(SCR_PROG_ENTRY, 1);
+
+        if (!progmem && DevFile.PartsList[ActivePart].EEMemEraseScript != 0)
+        { // Some parts must have EE bulk erased before being re-written.
+            printf("Bulk erase EEPROM before write..\n");
+            //fflush(stdout);
+            //RunScript(SCR_PROG_ENTRY, 1);
+            RunScript(SCR_ERASE_EE, 1);
+            //RunScript(SCR_PROG_EXIT, 1);
+        }
         
         if (DevFile.PartsList[ActivePart].EEWrPrepScript > 1)
         {
@@ -497,6 +663,16 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 					eeWord = eeWord << 1;
 				}
 
+                //$$$Bequest333 and JAKA
+                 //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+                //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+                if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                    _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+                {
+                    eeWord = reverse16Bits(eeWord);
+                }
+                //$$$
+
 				downloadBuffer[downloadIndex++] = (unsigned char)(eeWord & 0xFF);
 
 				for (int bite = 1; bite < bytesPerWord; bite++)
@@ -516,48 +692,260 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
     }
 
     // Write UserIDs ---------------------------------------------------------------------------------------------------
+    bool OTPAlreadyWritten = false;
     if (uidmem && (DevFile.PartsList[ActivePart].UserIDWords > 0))
     { // do not write if EE unselected as PIC18F cannot erase/write UserIDs except with ChipErase
-        RunScript(SCR_PROG_ENTRY, 1);
-
-        if (DevFile.PartsList[ActivePart].UserIDWrPrepScript > 0)
-        {
-            RunScript(SCR_USERID_WR_PREP, 1);
-        }             
+                     
         
         int bytesPerID = DevFile.Families[ActiveFamily].UserIDBytes;
         int bufferSize = DevFile.PartsList[ActivePart].UserIDWords * bytesPerID;
+        // unsigned char uiDownloadBuffer[DevFile.PartsList[ActivePart].UserIDWords * bytesPerID];
+        unsigned char* uiDownloadBuffer;
+        uiDownloadBuffer = (unsigned char*)malloc(sizeof(unsigned char) * bufferSize);
 
         int downloadIndex = 0;
         int idWritten = 0;
+        unsigned int uIDcheckmask;
+        bool uIDIsBlank = true;
+        if (bytesPerID == 1)
+            uIDcheckmask = 0xff;
+        else if (bytesPerID == 2)
+            uIDcheckmask = 0xffff;
+        else
+            uIDcheckmask = 0xffffff;
+
+        // Check if device has OTP already programmed.
+        if (PartHasCustomerOTP())
+        {
+            // Read UserIDs ----------------------------------------------------------------------------------------------------
+            if ((DevFile.PartsList[ActivePart].UserIDWords > 0) && (uidmem))
+            {
+                unsigned char upload_buffer[UPLOAD_BUFFER_SIZE];
+                if (!configInProgramSpace)
+                    RunScript(SCR_PROG_ENTRY, 1);
+                if (DevFile.PartsList[ActivePart].UserIDRdPrepScript > 0)
+                {
+                    RunScript(SCR_USERID_RD_PREP, 1);
+                }
+                int bytesPerWord = DevFile.Families[ActiveFamily].UserIDBytes;
+                int wordsRead = 0;
+                int bufferIndex = 0;
+                RunScriptUploadNoLen(SCR_USERID_RD, 1);
+                ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
+                if ((DevFile.PartsList[ActivePart].UserIDWords * bytesPerWord) > MAX_BYTES)
+                {
+                    UploadDataNoLen();
+                    ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
+                }
+                do
+                {
+                    if (bufferIndex >= (32 * bytesPerWord))
+                    {
+                        RunScriptUploadNoLen(SCR_USERID_RD, 1);
+                        ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
+                        if ((DevFile.PartsList[ActivePart].UserIDWords * bytesPerWord) > MAX_BYTES)
+                        {
+                            UploadDataNoLen();
+                            ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
+                        }
+                        bufferIndex = 0;
+                    }
+
+                    int bite = 0;
+                    unsigned int memWord = (unsigned int)upload_buffer[bufferIndex + bite++];
+                    if (bite < bytesPerWord)
+                    {
+                        memWord |= (unsigned int)upload_buffer[bufferIndex + bite++] << 8;
+                    }
+                    if (bite < bytesPerWord)
+                    {
+                        memWord |= (unsigned int)upload_buffer[bufferIndex + bite++] << 16;
+                    }
+                    if (bite < bytesPerWord)
+                    {
+                        memWord |= (unsigned int)upload_buffer[bufferIndex + bite++] << 24;
+                    }
+                    bufferIndex += bite;
+                    //$$$Bequest333 and JAKA
+                    //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+                    //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+                    if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                        _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+                    {
+                        memWord = reverse16Bits(memWord);
+                    }
+                    //$$$
+
+                    // shift if necessary
+                    if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
+                    {
+                        memWord = (memWord >> 1) & DevFile.Families[ActiveFamily].BlankValue;
+                    }
+                    
+                    wordsRead++;
+                    unsigned int blank = DevFile.Families[ActiveFamily].BlankValue;
+                    if (bytesPerWord == 1)
+                    {
+                        blank &= 0xFF;
+                        memWord &= 0xFF;
+                    }
+                    else if (bytesPerWord == 2)
+                    {
+                        blank &= 0xFFFF;
+                        memWord &= 0xFFFF;
+                    }
+                    if (memWord != blank)
+                    {
+                        printf("Skipping Customer OTP because it is already written.\n");
+                        printf("Errors will be shown below if OTP contents differ.\n\n");
+                        OTPAlreadyWritten = true;
+                    }
+                
+                    /*
+                    if (function == READ_MEM)
+                    {
+                        DeviceBuffers->UserIDs[wordsRead++] = memWord;
+                    }
+                    else
+                    { // BLANK_CHECK or VERIFY_MEM
+                        // handle cases where bytesPerWord is smaller than full device word. Some compilers
+                        // can put 0x00 and some 0xFF at the non-used byte(s)
+                        unsigned int bufferWord = DeviceBuffers->UserIDs[wordsRead++];
+                        if (bytesPerWord == 1)
+                        {
+                            memWord &= 0xFF;
+                            bufferWord &= 0xFF;
+                        }
+                        else if (bytesPerWord == 2)
+                        {
+                            memWord &= 0xFFFF;
+                            bufferWord &= 0xFFFF;
+                        }
+                        else if (bytesPerWord == 3)
+                        {
+                            memWord &= 0xFFFFFF;
+                            bufferWord &= 0xFFFFFF;
+                        }
+                        if (memWord != bufferWord)
+                            //if (DeviceBuffers->UserIDs[wordsRead++] != memWord)
+                        { // location failed verify
+                            RunScript(SCR_PROG_EXIT, 1);
+                            VddOff();
+                            timerStop();
+                            if (PartHasCustomerOTP())
+                            {
+                                _tcsncpy_s(ReadError.memoryType, "Customer OTP", 12);
+                            }
+                            else
+                            {
+                                _tcsncpy_s(ReadError.memoryType, "ID", 2);
+                            }
+                            ReadError.address = (DevFile.PartsList[ActivePart].UserIDAddr / DevFile.Families[ActiveFamily].UserIDHexBytes)
+                                * DevFile.Families[ActiveFamily].AddressIncrement;
+                            ReadError.address += --wordsRead * DevFile.Families[ActiveFamily].AddressIncrement;
+                            ReadError.expected = DeviceBuffers->UserIDs[wordsRead];
+                            ReadError.read = memWord;
+                            return false;
+                        }
+                    }*/
+
+                //} while (wordsRead < DevFile.PartsList[ActivePart].UserIDWords);
+                } while (wordsRead < DevFile.PartsList[ActivePart].UserIDWords && OTPAlreadyWritten == false);
+                if (!configInProgramSpace)
+                    RunScript(SCR_PROG_EXIT, 1);
+
+            }
+        }
+
         for (int word = 0; word < DevFile.PartsList[ActivePart].UserIDWords; word++)
         {
             unsigned int memWord = DeviceBuffers->UserIDs[idWritten++];
+            if ((memWord & uIDcheckmask) != uIDcheckmask)
+                uIDIsBlank = false;
             if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
             {
                 memWord = memWord << 1;
             }
+            //$$$Bequest333 and JAKA
+            if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+            {
+                memWord = reverse16Bits(memWord);
+            }
+            //$$$
 
-            downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
+            uiDownloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
 
             for (int bite = 1; bite < bytesPerID; bite++)
             {
                 memWord >>= 8;
-                downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
+                uiDownloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
             }
 
         }
         // download data
-        int dataIndex = DataClrAndDownload(downloadBuffer, bufferSize, 0);
-        while (dataIndex < downloadIndex)
+        // download data, only if it's not all blank. Also don't write OTP if already written.
+        if (!uIDIsBlank && !OTPAlreadyWritten)
         {
-            dataIndex = DataDownload(downloadBuffer, bufferSize, dataIndex);
+            int maxDownloadIndex = downloadIndex;
+            int wordsPerWrite = DevFile.PartsList[ActivePart].ProgMemWrWords;
+
+            if (maxDownloadIndex > DOWNLOAD_BUFFER_SIZE)
+            {
+                maxDownloadIndex = DOWNLOAD_BUFFER_SIZE;
+
+                while ((maxDownloadIndex % (bytesPerID * wordsPerWrite)) != 0)
+                {
+                    maxDownloadIndex--;
+                }
+            }
+            int reducedDownloadIndex = maxDownloadIndex;
+
+            if (!configInProgramSpace)
+                RunScript(SCR_PROG_ENTRY, 1);
+
+            if (PartHasCustomerOTP())
+            { // set address first to beginning of program memory, right after entering prog. mode.
+              // some devices, e.g. GA70x fail to write without this for some reason
+                DownloadAddress3(0);
+                RunScript(SCR_USERID_WR_PREP, 1);
+                // Now load the actual Customer OTP address
+                DownloadAddress3((int)DevFile.PartsList[ActivePart].UserIDAddr
+                    * DevFile.Families[ActiveFamily].AddressIncrement
+                    / DevFile.Families[ActiveFamily].UserIDHexBytes);
+            }
+
+            if (DevFile.PartsList[ActivePart].UserIDWrPrepScript > 0)
+            {
+                RunScript(SCR_USERID_WR_PREP, 1);
+            }
+            
+            int dataIndex = 0;
+            int bytesWrittenBeforeThisRound = 0;
+            while (dataIndex < downloadIndex)
+            {
+                bytesWrittenBeforeThisRound = dataIndex;
+                //dataIndex = DataClrAndDownload(downloadBuffer, bufferSize, 0);
+                dataIndex = DataClrAndDownload(uiDownloadBuffer, reducedDownloadIndex, dataIndex);
+                while (dataIndex < reducedDownloadIndex)
+                {
+                    // dataIndex = DataDownload(downloadBuffer, bufferSize, dataIndex);
+                    dataIndex = DataDownload(uiDownloadBuffer, reducedDownloadIndex, dataIndex);
+                }
+                if (PartHasCustomerOTP())
+                    RunScript(SCR_USERID_WR, ((dataIndex - bytesWrittenBeforeThisRound) / wordsPerWrite) / bytesPerID);
+                else
+                    RunScript(SCR_USERID_WR, (dataIndex + 63) / 64);
+                reducedDownloadIndex += maxDownloadIndex;
+                if (reducedDownloadIndex > downloadIndex)
+                {
+                    reducedDownloadIndex = downloadIndex;
+                }
+            }
+
+            if (!configInProgramSpace)
+                RunScript(SCR_PROG_EXIT, 1);
         }
-
-        RunScript(SCR_USERID_WR, 1);
-
-        RunScript(SCR_PROG_EXIT, 1);
-		
     }
 
     
@@ -692,6 +1080,16 @@ void CPICkitFunctions::WriteConfigOutsideProgMem()
         {
             configWord = configWord << 1;
         }
+        //$$$Bequest333 and JAKA
+        if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0) 
+        {
+            configWord = reverse16Bits(configWord);
+            if (DevFile.PartsList[ActivePart].IgnoreBytes == 0x000C
+                || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0x02) == 0x02)    // Q40,Q41,Q43,Q71,Q83,Q84 configuration is read/written byte at a time
+                configWord = swap2Bytes(configWord);
+        }
+        //$$$
         configBuffer[j++] = (unsigned char)(configWord & 0xFF);
         configBuffer[j++] = (unsigned char)((configWord >> 8) & 0xFF);
     }
@@ -850,8 +1248,36 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
             if (DevFile.PartsList[ActivePart].ChipErasePrepScript > 0)
             {
                 RunScript(SCR_ERASE_CHIP_PREP, 1);
-            } 
+            }
+            // printf("Erasing Part with Chip Erase...\n");
             RunScript(SCR_ERASE_CHIP, 1);
+
+            if (FamilyIsEEPROM()
+                && (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS))  // SPI FLASH parts bulk erase takes long, and time varies between parts
+            {                                                                                   // best is to check BUSY/WIP bit of STATUS register to determine when it's done
+                unsigned int typEraseTime = DevFile.PartsList[ActivePart].ConfigMasks[TYP_ERASE_TIME_CFG];
+                unsigned int maxEraseTime = DevFile.PartsList[ActivePart].ConfigMasks[MAX_ERASE_TIME_CFG];
+                if (typEraseTime == 0 || typEraseTime >= 65535)
+                    typEraseTime = 30;
+                if (maxEraseTime == 0 || maxEraseTime >= 65535)
+                    maxEraseTime = 120;
+
+                printf("Bulk erase of SPI FLASH part. Typical erase time %d seconds\n", typEraseTime);
+                unsigned short statusReg = 0x0001;
+                unsigned int elapsedEraseTime = 0;
+                //while (statusReg & 0x0001)
+                while ((statusReg & 0x0001) && (elapsedEraseTime < maxEraseTime))
+                    {
+                    Sleep(1000);
+                    elapsedEraseTime++;
+                    RunScript(SCR_CONFIG_RD, 1);
+                    UploadData();
+                    statusReg = Usb_read_array[1];
+                    printf("Estimated erase time remaining %d seconds  \r", (signed int)(typEraseTime) - (signed int)(elapsedEraseTime));
+                }
+                printf("\n");
+            }
+            
             RunScript(SCR_PROG_EXIT, 1);
         }
     }
@@ -957,10 +1383,26 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
                 { // PIC24FJ
                     orMask = 0xFF0000;
                 }
-                for (cfg = configWords; cfg > 0; cfg--)
+                //if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 160
+                //    || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 176)
+                if (NewStyleConfigs())
                 {
-                    DeviceBuffers->ProgramMemory[endOfBuffer - cfg] =
-                                DevFile.PartsList[ActivePart].ConfigBlank[configWords - cfg] | orMask;
+                    DeviceBuffers->ProgramMemory[configLocation] =
+                        DevFile.PartsList[ActivePart].ConfigBlank[0] | orMask;
+
+                    for (cfg = 1; cfg < configWords; cfg++)
+                    {
+                        DeviceBuffers->ProgramMemory[configLocation + 6 + cfg *2] =
+                            DevFile.PartsList[ActivePart].ConfigBlank[cfg] | orMask;
+                    }
+                }
+                else
+                {
+                    for (cfg = 0; cfg < configWords; cfg++)
+                    {
+                        DeviceBuffers->ProgramMemory[configLocation + cfg] =
+                            DevFile.PartsList[ActivePart].ConfigBlank[cfg] | orMask;
+                    }
                 }
 				writeConfigInsideProgramMem();
 			}
@@ -987,7 +1429,16 @@ bool CPICkitFunctions::WriteOSSCAL()
         {
             calWord <<= 1;
         }
-		unsigned char addressData[BUF_SIZE];
+        //$$$Bequest333 and JAKA
+        //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+        //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+        if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+        {
+            calWord = reverse16Bits(calWord);
+        }
+        //$$$
+        unsigned char addressData[BUF_SIZE];
         addressData[0] = (unsigned char)(calAddress & 0xFF);
         addressData[1] = (unsigned char)((calAddress >> 8) & 0xFF);
         addressData[2] = (unsigned char)((calAddress >> 16) & 0xFF);
@@ -1125,6 +1576,9 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
 
 	LastVerifyLocation = endOfBuffer;
 
+    if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+        printf("Using I2C address 0x%02x\n", I2CAddress);
+
 	timerStart((_TCHAR*)"Write EEPROM", endOfBuffer / wordsPerLoop);
 
     unsigned char downloadBuffer[DOWNLOAD_BUFFER_SIZE];
@@ -1134,9 +1588,13 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
         RunScript(SCR_PROGMEM_WR_PREP, 1);
     }
 
+    bool wholeChunkIsBlank = true;
+    bool previousChunkWasBlank = true;
+
     do
     {
         int downloadIndex = 0;
+        wholeChunkIsBlank = true;
 
         for (int word = 0; word < wordsPerLoop; word++)
         {
@@ -1162,6 +1620,11 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
 
             unsigned int memWord = DeviceBuffers->ProgramMemory[wordsWritten++];
 
+            if (memWord != DevFile.Families[ActiveFamily].BlankValue)
+            {
+                wholeChunkIsBlank = false;
+            }
+
             downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
 
             for (int bite = 1; bite < bytesPerWord; bite++)
@@ -1179,42 +1642,67 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
             }
 
         }
+
         // download data
-        int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
-        while (dataIndex < downloadIndex)
+        if (!wholeChunkIsBlank
+            || DevFile.PartsList[ActivePart].ProgMemAddrSetScript == 0
+            || skipBlankSections == false
+            || DevFile.PartsList[ActivePart].ChipEraseScript == 0)     // JAKA - Upload data only if it's not completely blank
         {
-            dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
-        }
-
-        RunScript(SCR_PROGMEM_WR, scriptRunsToUseDownload);
-
-        if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
-			|| (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == UNIO_BUS))
-        {
-            if (BusErrorCheck())
+            int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
+            while (dataIndex < downloadIndex)
             {
-                RunScript(SCR_PROG_EXIT, 1);
-                VddOff();
-				timerStop();
-				if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
-				{
-					printf("I2C Bus Error (No Acknowledge) - Aborted.\n");
-					_tcsncpy_s(ReadError.memoryType, "I2C Bus", 7);
-				}
-				else
-				{
-					printf("UNI/O Bus Error (NoSAK) - Aborted.\n");
-					_tcsncpy_s(ReadError.memoryType, "UNI/O Bus", 9);
-				}
-				ReadError.address = 0;
-				ReadError.expected = 0;
-				ReadError.read = 0;
-                return false;
+                dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
+            }
+        
+            RunScript(SCR_PROGMEM_WR, scriptRunsToUseDownload);
+
+            if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+                || (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == UNIO_BUS))
+            {
+                if (BusErrorCheck())
+                {
+                    RunScript(SCR_PROG_EXIT, 1);
+                    VddOff();
+                    timerStop();
+                    if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+                    {
+                        printf("I2C Bus Error (No Acknowledge) - Aborted.\n");
+                        _tcsncpy_s(ReadError.memoryType, "I2C Bus", 7);
+                    }
+                    else
+                    {
+                        printf("UNI/O Bus Error (NoSAK) - Aborted.\n");
+                        _tcsncpy_s(ReadError.memoryType, "UNI/O Bus", 9);
+                    }
+                    ReadError.address = 0;
+                    ReadError.expected = 0;
+                    ReadError.read = 0;
+                    return false;
+                }
             }
         }
+        previousChunkWasBlank = wholeChunkIsBlank;
         timerPrint();
     } while (wordsWritten < endOfBuffer);
 
+    ////////////////////////////////////////////////////////
+    /// SPI FLASH: ensure last write operation is finished.
+    ////////////////////////////////////////////////////////
+    if (FamilyIsEEPROM()
+        && (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS))
+    {
+        unsigned short statusReg = 0x0001;
+        unsigned int numberofChecks = 0;
+        while (((statusReg & 0x0001) == 0x0001) && (numberofChecks < 10))
+        {
+            Sleep(1);
+            numberofChecks++;
+            RunScript(SCR_CONFIG_RD, 1);
+            UploadData();
+            statusReg = Usb_read_array[1];
+        }
+    }
 
     RunScript(SCR_PROG_EXIT, 1);
 
@@ -1258,6 +1746,15 @@ bool CPICkitFunctions::ReadOSSCAL(void)
                     if (RunScript(SCR_PROG_EXIT, 1))
                     {
                         DeviceBuffers->OSCCAL = (unsigned int)(Usb_read_array[1] + (Usb_read_array[2] * 256));
+                        //$$$Bequest333 and JAKA
+                        //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+                        //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+                        if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+                        {
+                            DeviceBuffers->OSCCAL = reverse16Bits(DeviceBuffers->OSCCAL);
+                        }
+                        //$$$
                         if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
                         {
                             DeviceBuffers->OSCCAL >>= 1;
@@ -1281,6 +1778,15 @@ void CPICkitFunctions::ReadBandGap(void)
     RunScript(SCR_PROG_EXIT, 1);
     unsigned int config = (unsigned int)Usb_read_array[1];
     config |= (unsigned int)Usb_read_array[2] << 8;
+    //$$$Bequest333 and JAKA
+    //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+    //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+    if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+        _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+    {
+        config = reverse16Bits(config);
+    }
+    //$$$
     if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
     {
         config = (config >> 1) & DevFile.Families[ActiveFamily].BlankValue;
@@ -1355,15 +1861,39 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 		if ((configWords > 0) && (configLocation < (int)DevFile.PartsList[ActivePart].ProgramMem))
 		{
 			// put config word blank values in program memory array
-			for (int i = 0; i < configWords; i++)
-			{
-				DeviceBuffers->ProgramMemory[configLocation + i] = DevFile.PartsList[ActivePart].ConfigBlank[i]
-					+ (DevFile.Families[ActiveFamily].BlankValue & 0xFFFF0000);
-				if (DevFile.Families[ActiveFamily].BlankValue == 0xFFFF) // PIC18 J-Series
-				{
-					DeviceBuffers->ProgramMemory[configLocation + i] |= 0xF000;
-				}
-			}
+            
+            //if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 160
+            //    || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 176)
+            if (NewStyleConfigs())
+            {
+                DeviceBuffers->ProgramMemory[configLocation] = DevFile.PartsList[ActivePart].ConfigBlank[0]
+                    + (DevFile.Families[ActiveFamily].BlankValue & 0xFFFF0000);
+
+                for (int i = 1; i < configWords; i++)
+                {
+                    DeviceBuffers->ProgramMemory[configLocation + 6 + i * 2] = DevFile.PartsList[ActivePart].ConfigBlank[i]
+                        + (DevFile.Families[ActiveFamily].BlankValue & 0xFFFF0000);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < configWords; i++)
+                {
+                    DeviceBuffers->ProgramMemory[configLocation + i] = DevFile.PartsList[ActivePart].ConfigBlank[i]
+                        + (DevFile.Families[ActiveFamily].BlankValue & 0xFFFF0000);
+                    /*if (i < 9) {
+                        DeviceBuffers->ProgramMemory[configLocation + i] = DevFile.PartsList[ActivePart].ConfigBlank[i]
+                            + (DevFile.Families[ActiveFamily].BlankValue & 0xFFFF0000);
+                    }
+                    else {      // JAKA: Set config blank to family blank if more than 9 config words / 18 config bytes
+                        DeviceBuffers->ProgramMemory[configLocation + i] = DevFile.Families[ActiveFamily].BlankValue;
+                    }*/
+                    if (DevFile.Families[ActiveFamily].BlankValue == 0xFFFF) // PIC18 J-Series
+                    {
+                        DeviceBuffers->ProgramMemory[configLocation + i] |= 0xF000;
+                    }
+                }
+            }
 		}
 		if (DevFile.PartsList[ActivePart].BlankCheckSkipUsrIDs)
 			uidmem = false;
@@ -1478,16 +2008,22 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 			  // (MPLAB uses script on some parts when PICkit 2 does not)
 				if (FamilyIsEEPROM())
 				{
-					DownloadAddress3MSBFirst(eeprom24BitAddress(0, WRITE_BIT));
+                    if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS) && (function != VERIFY_MEM_SHORT))
+                        printf("Using I2C address 0x%02x\n", I2CAddress);
+
+                    DownloadAddress3MSBFirst(eeprom24BitAddress(0, WRITE_BIT));
 					RunScript(SCR_PROGMEM_ADDRSET, 1);
 					if (BusErrorCheck())
 					{
 						RunScript(SCR_PROG_EXIT, 1);
 						VddOff();
 						timerStop();
-						if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
-							_tcsncpy_s(ReadError.memoryType, "I2C Bus", 7);
-						else
+                        if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+                        {
+                            _tcsncpy_s(ReadError.memoryType, "I2C Bus", 7);
+                            printf("No ACK from I2C slave\n");
+                        }
+                        else
 							_tcsncpy_s(ReadError.memoryType, "UNI/O Bus", 9);
 						ReadError.address = 0;
 						ReadError.expected = 0;
@@ -1507,6 +2043,20 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 				(DevFile.PartsList[ActivePart].ProgMemRdWords * bytesPerWord);
 			int wordsPerLoop = scriptRunsToFillUpload * DevFile.PartsList[ActivePart].ProgMemRdWords;
 			int wordsRead = 0;
+            /*
+            // compute configration information.
+            bool configInProgramSpace = false;
+            int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr /
+                DevFile.Families[ActiveFamily].ProgMemHexBytes;
+            int configWords = DevFile.PartsList[ActivePart].ConfigWords;
+            int endOfBuffer = DevFile.PartsList[ActivePart].ProgramMem;
+            if ((configLocation < (int)DevFile.PartsList[ActivePart].ProgramMem) && (configWords > 0))
+            {
+                configInProgramSpace = true;
+            }
+            */
+            bool wholeChunkIsBlank = true;
+            bool previousChunkWasBlank = false;
 
 			if (function == BLANK_CHECK)
 				timerStart((_TCHAR*)"Blank Check", LastVerifyLocation / wordsPerLoop);
@@ -1524,91 +2074,196 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 
 			do
 			{
-				if (FamilyIsEEPROM())
-				{
-					if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
-						&& (wordsRead > DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG])
-						&& (wordsRead % (DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG] + 1) == 0))
-					{ // must resend address to EE every time we cross a bank border.
-						DownloadAddress3MSBFirst(eeprom24BitAddress(wordsRead, WRITE_BIT));
-						RunScript(SCR_PROGMEM_ADDRSET, 1);
-					}                    
-					Download3Multiples(eeprom24BitAddress(wordsRead, READ_BIT), scriptRunsToFillUpload,
-								DevFile.PartsList[ActivePart].ProgMemRdWords);
-				}
-				//RunScriptUploadNoLen2(SCR_PROGMEM_RD, scriptRunsToFillUpload);
-				RunScriptUploadNoLen(SCR_PROGMEM_RD, scriptRunsToFillUpload);
-				ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
-				//GetUpload();
-				UploadDataNoLen();
-				ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
-				int uploadIndex = 0;                                 
-				for (int word = 0; word < wordsPerLoop; word++)
-				{
-					int bite = 0;
-					unsigned int memWord = (unsigned int)upload_buffer[uploadIndex + bite++];
-					if (bite < bytesPerWord)
-					{
-						memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 8;
-					}
-					if (bite < bytesPerWord)
-					{
-						memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 16;
-					}
-					if (bite < bytesPerWord)
-					{
-						memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 24;
-					}
-					uploadIndex += bite;
-					// shift if necessary
-					if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
-					{
-						memWord = (memWord >> 1) & DevFile.Families[ActiveFamily].BlankValue;
-					}
-					// swap "Endian-ness" of 16 bit 93LC EEPROMs
-					if ((FamilyIsEEPROM()) && (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == MICROWIRE_BUS)
-						 && (bytesPerWord == 2))
-					{
-						int memTemp = (memWord << 8) & 0xFF00;
-						memWord >>= 8;
-						memWord |= memTemp;
-					}
-					if (function == READ_MEM)
-					{
-						DeviceBuffers->ProgramMemory[wordsRead++] = memWord;	
-					}
-					else
-					{ // BLANK_CHECK or VERIFY_MEM
-						if (DeviceBuffers->ProgramMemory[wordsRead++] != memWord)
-						{ // location failed verify
-							if (!DevFile.PartsList[ActivePart].OSSCALSave
-								|| (DevFile.PartsList[ActivePart].ProgramMem != (unsigned int)wordsRead))
-							{ // skip last byte in memory if it is osccal
-								RunScript(SCR_PROG_EXIT, 1);
-								VddOff();
-								timerStop();
-								_tcsncpy_s(ReadError.memoryType, "Program", 7);
-								ReadError.address = --wordsRead * DevFile.Families[ActiveFamily].AddressIncrement;
-								ReadError.expected = DeviceBuffers->ProgramMemory[wordsRead];
-								ReadError.read = memWord;
-								return false;
-							}
-						}
-					}
-					if (wordsRead == LastVerifyLocation)
-					{
-						break; // for cases where ProgramMemSize%WordsPerLoop != 0
-					}
-					if (((wordsRead % 0x8000) == 0)
-							&& (DevFile.PartsList[ActivePart].ProgMemAddrSetScript != 0)
-							&& (DevFile.PartsList[ActivePart].ProgMemAddrBytes != 0)
-							&& (DevFile.Families[ActiveFamily].BlankValue > 0xFFFF))
-					{ //PIC24 must update TBLPAG
-						DownloadAddress3(0x10000 * (wordsRead / 0x8000));
-						RunScript(SCR_PROGMEM_ADDRSET, 1);
-						break;
-					} 
-				}
+                wholeChunkIsBlank = true;
+
+                for (int word = 0; word < wordsPerLoop; word++)
+                {
+                    if (DeviceBuffers->ProgramMemory[wordsRead + word] != DevFile.Families[ActiveFamily].BlankValue)
+                    {
+                        wholeChunkIsBlank = false;
+                        // break;
+                    }
+                }
+
+                if (!wholeChunkIsBlank
+                    || DevFile.PartsList[ActivePart].ProgMemAddrSetScript == 0
+                    || skipBlankSections == false
+                    || function == READ_MEM
+                    || function == BLANK_CHECK
+                    || FamilyIsMCP())     // JAKA - Verify data only if it's not completely blank
+                {
+                    
+                    ////////////////////////////////////////////
+                    // Set I2C address if crossed bank border //
+                    ////////////////////////////////////////////
+                    bool i2cAdrAlreadyWritten = false;
+                    if (FamilyIsEEPROM())
+                    {
+                        if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+                            && (wordsRead > DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG])
+                            && (wordsRead % (DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG] + 1) == 0))
+                        { // must resend address to EE every time we cross a bank border.
+                            DownloadAddress3MSBFirst(eeprom24BitAddress(wordsRead, WRITE_BIT));
+                            RunScript(SCR_PROGMEM_ADDRSET, 1);
+                            i2cAdrAlreadyWritten = true;
+                        }
+                        //Download3Multiples(eeprom24BitAddress(wordsRead, READ_BIT), scriptRunsToFillUpload,
+                        //    DevFile.PartsList[ActivePart].ProgMemRdWords);
+                    }
+
+                    ///////////////////////////////////////////////////
+                    // Set new address if previous chunk was skipped //
+                    ///////////////////////////////////////////////////
+                    if (DevFile.PartsList[ActivePart].ProgMemAddrSetScript != 0
+                        && skipBlankSections == true
+                        && function != READ_MEM
+                        && function != BLANK_CHECK
+                        && !FamilyIsMCP())
+                        // && (DevFile.PartsList[ActivePart].ProgMemAddrBytes != 0))
+                    { // if prog mem address set script exists for this part
+                        if (previousChunkWasBlank)
+                        {
+                            if (FamilyIsEEPROM())
+                            {   // set EEPROM address if previous chunk was not verified
+                                if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+                                { 
+                                    DownloadAddress3MSBFirst(eeprom24BitAddress(wordsRead, WRITE_BIT));
+                                    RunScript(SCR_PROGMEM_ADDRSET, 1);
+                                }
+                                //Download3Multiples(eeprom24BitAddress(wordsRead, READ_BIT), scriptRunsToFillUpload,
+                                //    DevFile.PartsList[ActivePart].ProgMemRdWords);
+                            }
+                            else
+                            {   // set PC if prevoius chunk was not verified
+                                DownloadAddress3(wordsRead * DevFile.Families[ActiveFamily].AddressIncrement);
+                                RunScript(SCR_PROGMEM_ADDRSET, 1);
+                            }
+                        }
+                    }
+
+                    ////////////////////////////////////
+                    // Download data read from device //
+                    ////////////////////////////////////
+
+				    if (FamilyIsEEPROM())
+                    {
+                        Download3MultiplesRunScriptUploadNolen(eeprom24BitAddress(wordsRead, READ_BIT), scriptRunsToFillUpload,
+                            DevFile.PartsList[ActivePart].ProgMemRdWords, false);
+                    }
+                    else
+                    {
+                        //if (blockingReadEnabled)
+                        //    RunScriptUploadNoLen2(SCR_ROGMEM_RD, scriptRunsToFillUpload);
+                        //else
+                            RunScriptUploadNoLen(SCR_PROGMEM_RD, scriptRunsToFillUpload);
+                    }
+                                        
+                    ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
+				    
+                    //if (blockingReadEnabled)
+                    //    GetUpload();
+                    //else
+                        UploadDataNoLen();
+
+				    ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
+				    int uploadIndex = 0;                                 
+				    for (int word = 0; word < wordsPerLoop; word++)
+				    {
+					    int bite = 0;
+					    unsigned int memWord = (unsigned int)upload_buffer[uploadIndex + bite++];
+					    if (bite < bytesPerWord)
+					    {
+						    memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 8;
+					    }
+					    if (bite < bytesPerWord)
+					    {
+						    memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 16;
+					    }
+					    if (bite < bytesPerWord)
+					    {
+						    memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 24;
+					    }
+					    uploadIndex += bite;
+                        //$$$Bequest333 and JAKA
+                        //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+                        //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+                        if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+                        {
+                            memWord = reverse16Bits(memWord);
+                        }
+                        //$$$
+                        // shift if necessary
+					    if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
+					    {
+						    memWord = (memWord >> 1) & DevFile.Families[ActiveFamily].BlankValue;
+					    }
+					    // swap "Endian-ness" of 16 bit 93LC EEPROMs
+					    if ((FamilyIsEEPROM()) && (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == MICROWIRE_BUS)
+						     && (bytesPerWord == 2))
+					    {
+						    int memTemp = (memWord << 8) & 0xFF00;
+						    memWord >>= 8;
+						    memWord |= memTemp;
+					    }
+					    if (function == READ_MEM)
+					    {
+						    DeviceBuffers->ProgramMemory[wordsRead++] = memWord;	
+					    }
+					    else
+					    { // BLANK_CHECK or VERIFY_MEM
+						    /*
+                            if (configInProgramSpace)
+                            {
+                                // PIC24F and PIC18 J-series
+                                if (wordsRead >= configLocation && function == BLANK_CHECK)
+                                {
+                                    DeviceBuffers->ProgramMemory[wordsRead] = DevFile.PartsList[ActivePart].ConfigBlank[configWords - (endOfBuffer - wordsRead)];
+                                    if (DevFile.Families[ActiveFamily].BlankValue == 0xffffff)
+                                    {   // ConfigBlank[] is only 16-bit, but actual words in PIC24 are 24-bit
+                                        DeviceBuffers->ProgramMemory[wordsRead] |= 0xff0000;
+                                    }
+                                }
+                            
+                            }
+                            */
+                            if (DeviceBuffers->ProgramMemory[wordsRead++] != memWord)
+						    { // location failed verify
+							    if (!DevFile.PartsList[ActivePart].OSSCALSave
+								    || (DevFile.PartsList[ActivePart].ProgramMem != (unsigned int)wordsRead))
+							    { // skip last byte in memory if it is osccal
+								    RunScript(SCR_PROG_EXIT, 1);
+								    VddOff();
+								    timerStop();
+								    _tcsncpy_s(ReadError.memoryType, "Program", 7);
+								    ReadError.address = --wordsRead * DevFile.Families[ActiveFamily].AddressIncrement;
+								    ReadError.expected = DeviceBuffers->ProgramMemory[wordsRead];
+								    ReadError.read = memWord;
+								    return false;
+							    }
+						    }
+					    }
+					    if (wordsRead == LastVerifyLocation)
+					    {
+						    break; // for cases where ProgramMemSize%WordsPerLoop != 0
+					    }
+					    if (((wordsRead % 0x8000) == 0)
+							    && (DevFile.PartsList[ActivePart].ProgMemAddrSetScript != 0)
+							    && (DevFile.PartsList[ActivePart].ProgMemAddrBytes != 0)
+							    && (DevFile.Families[ActiveFamily].BlankValue > 0xFFFF))
+					    { //PIC24 must update TBLPAG
+						    DownloadAddress3(0x10000 * (wordsRead / 0x8000));
+						    RunScript(SCR_PROGMEM_ADDRSET, 1);
+						    break;
+					    } 
+				    }
+                }
+                else
+                {   // increment wordsRead the correct amount
+                wordsRead += wordsPerLoop;
+                }
+                previousChunkWasBlank = wholeChunkIsBlank;
+
 				timerPrint();
 			} while (wordsRead < LastVerifyLocation);
 
@@ -1642,9 +2297,21 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
             UploadDataNoLen();
             ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
         }
-        RunScript(SCR_PROG_EXIT, 1);
         do
         {
+            //if (bufferIndex >= 64)      // Should MAX_BYTES be used here(?)
+            if (bufferIndex >= (32 * bytesPerWord)) 
+            {
+                RunScriptUploadNoLen(SCR_USERID_RD, 1);
+                ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
+                if ((DevFile.PartsList[ActivePart].UserIDWords * bytesPerWord) > MAX_BYTES)
+                {
+                    UploadDataNoLen();
+                    ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
+                }
+                bufferIndex = 0;
+            }
+
             int bite = 0;
             unsigned int memWord = (unsigned int)upload_buffer[bufferIndex + bite++];
             if (bite < bytesPerWord)
@@ -1660,7 +2327,16 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
                 memWord |= (unsigned int)upload_buffer[bufferIndex + bite++] << 24;
             }
             bufferIndex += bite;                    
-            
+            //$$$Bequest333 and JAKA
+            //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+            //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+            if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+            {
+                memWord = reverse16Bits(memWord);
+            }
+            //$$$
+
             // shift if necessary
             if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
             {
@@ -1673,12 +2349,38 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 			}
 			else
 			{ // BLANK_CHECK or VERIFY_MEM
-				if (DeviceBuffers->UserIDs[wordsRead++] != memWord)
+				// handle cases where bytesPerWord is smaller than full device word. Some compilers
+				// can put 0x00 and some 0xFF at the non-used byte(s)
+				unsigned int bufferWord = DeviceBuffers->UserIDs[wordsRead++];
+				if (bytesPerWord == 1)
+				{
+					memWord &= 0xFF;
+					bufferWord &= 0xFF;
+				}
+                else if (bytesPerWord == 2)
+                {
+                    memWord &= 0xFFFF;
+                    bufferWord &= 0xFFFF;
+                }
+                else if (bytesPerWord == 3)
+                {
+                    memWord &= 0xFFFFFF;
+                    bufferWord &= 0xFFFFFF;
+                }
+                if (memWord != bufferWord)
+                //if (DeviceBuffers->UserIDs[wordsRead++] != memWord)
 				{ // location failed verify
 					RunScript(SCR_PROG_EXIT, 1);
 					VddOff();
 					timerStop();
-					_tcsncpy_s(ReadError.memoryType, "ID", 2);
+                    if (PartHasCustomerOTP())
+                    {
+                        _tcsncpy_s(ReadError.memoryType, "Customer OTP", 12);
+                    }
+                    else
+                    {
+                        _tcsncpy_s(ReadError.memoryType, "ID", 2);
+                    }
 					ReadError.address = (DevFile.PartsList[ActivePart].UserIDAddr / DevFile.Families[ActiveFamily].UserIDHexBytes)
 											* DevFile.Families[ActiveFamily].AddressIncrement;
 					ReadError.address += --wordsRead * DevFile.Families[ActiveFamily].AddressIncrement;
@@ -1689,6 +2391,8 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 			}
 
         } while (wordsRead < DevFile.PartsList[ActivePart].UserIDWords);
+        RunScript(SCR_PROG_EXIT, 1);
+
     }
 
     // Read Configuration ------------------------------------------------------------------------------------------------
@@ -1781,6 +2485,15 @@ bool CPICkitFunctions::readEEPROM(char function)
                 memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 8;
             }
             uploadIndex += bite;
+            //$$$Bequest333 and JAKA
+            //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+            //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+            if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+            {
+                memWord = reverse16Bits(memWord);
+            }
+            //$$$
             // shift if necessary
             if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
             {
@@ -1819,7 +2532,8 @@ bool CPICkitFunctions::readEEPROM(char function)
 	return ret;
 }
 
-
+/*
+// Deprecated 10.9.2023. Now using Download3MultiplesRunScriptUploadNolen
 bool CPICkitFunctions::Download3Multiples(int downloadBytes, int multiples, int increment)
 {
     unsigned char firstCommand = FWCMD_CLR_DOWNLOAD_BUFFER;
@@ -1859,6 +2573,73 @@ bool CPICkitFunctions::Download3Multiples(int downloadBytes, int multiples, int 
     
     return true;
 }
+*/
+bool CPICkitFunctions::Download3MultiplesRunScriptUploadNolen(int downloadBytes, int multiples, int increment, bool blockingReadEnabled)
+{
+    unsigned char firstCommand = FWCMD_CLR_DOWNLOAD_BUFFER;
+    bool result;
+    int repetitions = multiples;
+
+    do
+    {
+        int thisWrite = multiples;
+        int lastWrite = 1;
+        if (multiples > 20) // can only write 20 per USB packet. (20 * 3 = 60 bytes)
+        {
+            thisWrite = 20;
+            multiples -= 20;
+            lastWrite = 0;
+        }
+        else if (multiples > 18) // the run script and upload commands still donn't fit (18 * 3 = 54 bytes)
+        {
+            thisWrite = 18;
+            multiples -= 18;
+            lastWrite = 0;
+        }
+        else
+        {
+            multiples = 0;
+        }
+        unsigned char commandArray[BUF_SIZE];
+        commandArray[0] = firstCommand;
+        commandArray[1] = FWCMD_DOWNLOAD_DATA;
+        commandArray[2] = (unsigned char)(3 * thisWrite);
+        for (int i = 0; i < thisWrite; i++)
+        {
+            commandArray[3 + (3 * i)] = (unsigned char)(downloadBytes >> 16);
+            commandArray[4 + (3 * i)] = (unsigned char)(downloadBytes >> 8);
+            commandArray[5 + (3 * i)] = (unsigned char)downloadBytes;
+
+            downloadBytes += increment;
+        }
+
+        if (lastWrite == 1)
+        {
+            commandArray[3 + (3 * thisWrite)] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArray[4 + (3 * thisWrite)] = FWCMD_RUN_SCRIPT;
+            commandArray[5 + (3 * thisWrite)] = scriptRedirectTable[SCR_PROGMEM_RD].redirectToScriptLocation;
+            commandArray[6 + (3 * thisWrite)] = (unsigned char)repetitions;
+            commandArray[7 + (3 * thisWrite)] = FWCMD_UPLOAD_DATA_NOLEN;
+            if (blockingReadEnabled)
+            {
+                commandArray[8 + (3 * thisWrite)] = FWCMD_UPLOAD_DATA_NOLEN;
+            }
+        }
+
+        result = writeUSB(commandArray, (3 * thisWrite) + 3 + lastWrite * (5 + (int)(blockingReadEnabled)));
+        if (!result)
+        {
+            return false;
+        }
+
+        firstCommand = FWCMD_NO_OPERATION;
+    } while (multiples > 0);
+    if (result)
+    {
+        result = readUSB();
+    }
+    return result;
+}
 
 bool CPICkitFunctions::DownloadAddress3MSBFirst(int address)
 {
@@ -1884,9 +2665,14 @@ int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
         // I2C
         // Low & mid bytes
         address = wordsWritten & DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG] & 0xFFFF;
+        
         // block address
         tempAddress >>= (DevFile.PartsList[ActivePart].ConfigMasks[ADR_BITS_CFG]);
-        tempAddress <<= 17 + chipSelects; // 2 words plus R/W bit
+        if (DevFile.PartsList[ActivePart].ConfigMasks[BS_BELOW_CS_CFG] == 0)
+            tempAddress <<= 17 + chipSelects; // 2 words plus R/W bit
+        else
+            tempAddress <<= 17; // 2 words plus R/W bit
+        
         /*if (chipSelects > 0)   // always set to '0' in pk2cmd
         {
             if (checkBoxA0CS.Checked)
@@ -1903,7 +2689,8 @@ int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
             }
         }*/ 
         
-        address += (tempAddress & 0x000E0000) + 0x00A00000;
+        //address += (tempAddress & 0x000E0000) + 0x00A00000;
+        address += (tempAddress & 0x000E0000) | (I2CAddress << 17);     // Doesn't check if block address bits collide with I2C address. User's responsibility!
         if (setReadBit)
         {
             address |= 0x00010000;
@@ -1911,7 +2698,8 @@ int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
         
         return address;
     }
-    else if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_BUS)
+    else if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_BUS  
+             || DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS)
     {
         int tempAddress = wordsWritten;
         int address = 0;
@@ -2036,6 +2824,18 @@ bool CPICkitFunctions::ReadConfigOutsideProgMem(char function)
     {
         unsigned int config = (unsigned int)Usb_read_array[bufferIndex++];
         config |= (unsigned int)Usb_read_array[bufferIndex++] << 8;
+        //$$$Bequest333 and JAKA
+        //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
+        //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
+        if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+        {
+            config = reverse16Bits(config);
+            if (DevFile.PartsList[ActivePart].IgnoreBytes == 0x000C
+                || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0x02) == 0x02)    // Q40,Q41,Q43,Q71,Q83,Q84 configuration is read/written byte at a time
+                config = swap2Bytes(config);
+        }
+        //$$$
         if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
         {
             config = (config >> 1) & DevFile.Families[ActiveFamily].BlankValue;
@@ -2047,8 +2847,30 @@ bool CPICkitFunctions::ReadConfigOutsideProgMem(char function)
 		}
 		else
 		{ // BLANK_CHECK or VERIFY_MEM
-			if ((DeviceBuffers->ConfigWords[word] & DevFile.PartsList[ActivePart].ConfigMasks[word])
-					!= (config & DevFile.PartsList[ActivePart].ConfigMasks[word]))
+            // JAKA, workaround for more than 9 config words/18 config bytes
+            unsigned int configVerifyMask;
+            if (word < 9) {
+                configVerifyMask = DevFile.PartsList[ActivePart].ConfigMasks[word];
+            }
+            // else if (word == (DevFile.PartsList[ActivePart].IgnoreAddress - DevFile.PartsList[ActivePart].ConfigAddr) / DevFile.Families[ActiveFamily].BytesPerLocation) {
+            else if ((word == (configWords - 1)) && ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0x04) == 0x04)) {
+                configVerifyMask = 0x00ff;  // Mask out the 'missing' byte of last partial config word on Q71,83,84
+            }
+            else {
+                configVerifyMask = 0xffff;
+            }
+            //printf("word = %u configverifymask = %x config = %x configWord=%x\n", word, configVerifyMask, config, DeviceBuffers->ConfigWords[word]);
+            if (word == 0 && DevFile.PartsList[ActivePart].BandGapMask > 0) {
+                // Handle devices with BandGap bits in configuration word
+                // If there really is verfiy/blank check error, the displayed good and bad can still
+                // show mismatch for the Bandgap bits, but that's probably a good thing(?)
+                // could be fixed by adjusting the Readerror.expected and Readerror.read below with
+                // bandgapmask.
+                configVerifyMask &= ~(unsigned int)(DevFile.PartsList[ActivePart].BandGapMask);
+            }
+        // END JAKA
+            if ((DeviceBuffers->ConfigWords[word] & configVerifyMask)
+					!= (config & configVerifyMask))
 			{ // location failed verify
 				RunScript(SCR_PROG_EXIT, 1);
 				VddOff();
@@ -2057,9 +2879,15 @@ bool CPICkitFunctions::ReadConfigOutsideProgMem(char function)
 				ReadError.address = (DevFile.PartsList[ActivePart].ConfigAddr / DevFile.Families[ActiveFamily].ProgMemHexBytes)
 											* DevFile.Families[ActiveFamily].AddressIncrement;
 				ReadError.address += (word * DevFile.Families[ActiveFamily].AddressIncrement);
-				ReadError.expected = DeviceBuffers->ConfigWords[word] & DevFile.PartsList[ActivePart].ConfigMasks[word];
-				ReadError.read = config & DevFile.PartsList[ActivePart].ConfigMasks[word];
-				return false;
+                if (word < 9) {
+                    ReadError.expected = DeviceBuffers->ConfigWords[word] & DevFile.PartsList[ActivePart].ConfigMasks[word];
+                    ReadError.read = config & DevFile.PartsList[ActivePart].ConfigMasks[word];
+                }
+                else {
+                    ReadError.expected = DeviceBuffers->ConfigWords[word];
+                    ReadError.read = config;
+                }
+                return false;
 			}
 		}
     }  
@@ -2173,9 +3001,26 @@ bool CPICkitFunctions::DownloadAddress3(int address)
     commandArray[0] = FWCMD_CLR_DOWNLOAD_BUFFER;
     commandArray[1] = FWCMD_DOWNLOAD_DATA;
     commandArray[2] = 3;
-    commandArray[3] = (unsigned char)(address & 0xFF);
-    commandArray[4] = (unsigned char)(0xFF & (address >> 8));
-    commandArray[5] = (unsigned char)(0xFF & (address >> 16));
+    if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+        _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+    {
+#ifdef OLDSTYLE_MSB1ST_SETADDR
+        commandArray[3] = (unsigned char)(address & 0xFF);
+        commandArray[4] = (unsigned char)(0xFF & (address >> 8));
+        commandArray[5] = (unsigned char)(0xFF & (address >> 16));
+#else
+        address <<= 1;	// add stop bit
+        commandArray[3] = (unsigned char)reverse8Bits((unsigned short)(0xFF & (address >> 16)));
+        commandArray[4] = (unsigned char)reverse8Bits((unsigned short)(0xFF & (address >> 8)));
+        commandArray[5] = (unsigned char)reverse8Bits((unsigned short)(address & 0xFF));
+#endif
+    }
+    else
+    {
+        commandArray[3] = (unsigned char)(address & 0xFF);
+        commandArray[4] = (unsigned char)(0xFF & (address >> 8));
+        commandArray[5] = (unsigned char)(0xFF & (address >> 16));
+    }
     return writeUSB(commandArray, 6);
 }
 
@@ -2328,17 +3173,17 @@ bool CPICkitFunctions::SetVDDVoltage(float voltage, float threshold)
 
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_SETVDD;
-    if (m_Driver.type() == Pickit2) {
+    if (m_Driver.type() == Pickit2 || m_Driver.type() == PK2M) {
         commandArray[1] = (unsigned char) (ccpValue & 0xFF);
         commandArray[2] = (unsigned char) (ccpValue / 256);
         commandArray[3] = vFault;
         return writeUSB(commandArray, 4);
-    } else if (m_Driver.type() == Pickit3) {
+    } else if (m_Driver.type() == Pickit3 || m_Driver.type() == pkob) {
         //TODO change firmware to handle more accurate voltage steps
-        unsigned short int vddValue = (ushort)(voltage / 0.125F);
+        unsigned short int vddValue = (unsigned short int)(voltage / 0.125F);
 
-        commandArray[1] = (byte)(vddValue & 0xFF);
-        commandArray[2] = (byte)(vddValue / 256);
+        commandArray[1] = (char)(vddValue & 0xFF);
+        commandArray[2] = (char)(vddValue / 256);
 
         return writeUSB(commandArray, 3);
     }
@@ -2353,12 +3198,12 @@ bool CPICkitFunctions::SetVppVoltage(float voltage, float threshold)
 
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_SETVPP;
-    if (m_Driver.type() == Pickit2) {
+    if (m_Driver.type() == Pickit2 || m_Driver.type() == PK2M) {
         commandArray[1] = ccpValue;
         commandArray[2] = vppADC;
         commandArray[3] = vFault;
         return writeUSB(commandArray, 4);
-    } else if (m_Driver.type() == Pickit3) {
+    } else if (m_Driver.type() == Pickit3 || m_Driver.type() == pkob) {
         unsigned short int vppValue = (unsigned short int)(voltage / 0.125F);
         commandArray[1] = (unsigned char)(vppValue & 0xFF);
         commandArray[2] = (unsigned char)(vppValue / 256);
@@ -2433,13 +3278,13 @@ bool CPICkitFunctions::ReadPICkitVoltages(float* vdd, float* vpp)
     {
         if (readUSB())
         {
-            if (m_Driver.type() == Pickit2) {
+            if (m_Driver.type() == Pickit2 || m_Driver.type() == PK2M) {
                 float valueADC = (float)((Usb_read_array[1] * 256) + Usb_read_array[0]);
                 *vdd = (valueADC / 65536) * 5.0F;
                 valueADC = (float)((Usb_read_array[3] * 256) + Usb_read_array[2]);
                 *vpp = (valueADC / 65536) * 13.7F;
                 return true;
-            } else if (m_Driver.type() == Pickit3) {
+            } else if (m_Driver.type() == Pickit3 || m_Driver.type() == pkob) {
                 //TODO if firmware is changed to handle more accurate voltage steps, change this too
                 *vpp = (float)((Usb_read_array[0] * 256) + Usb_read_array[1]) * 0.125f;
                 *vdd = (float)((Usb_read_array[2] * 256) + Usb_read_array[3]) * 0.125f;
@@ -2470,7 +3315,7 @@ bool CPICkitFunctions::DetectPICkit2Device(int unitNumber, bool readFWVer)
 		return true;	// found device, but don't read FW
 	}
 
-    if (m_Driver.type() == Pickit2) {
+    if (m_Driver.type() == Pickit2 || m_Driver.type() == PK2M) {
         // Try to read firmware version
         commandArray[0] = FWCMD_FIRMWARE_VERSION;
 
@@ -2481,12 +3326,22 @@ bool CPICkitFunctions::DetectPICkit2Device(int unitNumber, bool readFWVer)
             if (result)
             {
                 FirmwareVersion.major = Usb_read_array[0];
-                FirmwareVersion.minor = Usb_read_array[1];
-                FirmwareVersion.dot = Usb_read_array[2];
+                if (FirmwareVersion.major == 118)   // PK2 in Bootloader!
+                {
+                    FirmwareVersion.minor = Usb_read_array[6];
+                    FirmwareVersion.dot = Usb_read_array[7];
+                }
+                else
+                {
+                    FirmwareVersion.minor = Usb_read_array[1];
+                    FirmwareVersion.dot = Usb_read_array[2];
+                }
             }
         }
-    } else if (m_Driver.type() == Pickit3) {
-        memset(commandArray, 0xAD, 64);
+    }
+    else if (m_Driver.type() == Pickit3 || m_Driver.type() == pkob)
+    {        
+	memset(commandArray, 0xAD, 64);
         commandArray[0] = FWCMD_GETVERSIONS_MPLAB;
         commandArray[1] = 0;
 
@@ -2495,25 +3350,35 @@ bool CPICkitFunctions::DetectPICkit2Device(int unitNumber, bool readFWVer)
         commandArray[61] = 0;
         commandArray[62] = 0;
         commandArray[63] = 0;
+        //printf("Try to write\n");
         result = m_Driver.WriteReport((char *)commandArray, 64);
+        //printf("Wrote\n");
         if (result)
         {
             result = m_Driver.ReadReport((char *)Usb_read_array);
+            //printf("Read, result was %u\n", result);
             if (result)
             {
                 FirmwareVersion.major = Usb_read_array[33];
                 FirmwareVersion.minor = Usb_read_array[34];
                 FirmwareVersion.dot = Usb_read_array[35];
 
-                PK3_OSVersion.type = Usb_read_array[7];
-                PK3_OSVersion.major = Usb_read_array[8];
-                PK3_OSVersion.minor = Usb_read_array[9];
-                PK3_OSVersion.dot = Usb_read_array[10];
+                PK3_OSVersion.type = Usb_read_array[6];
+                PK3_OSVersion.major = Usb_read_array[7];
+                PK3_OSVersion.minor = Usb_read_array[8];
+                PK3_OSVersion.dot = Usb_read_array[9];
 
-                PK3_AppVersion.type = Usb_read_array[12];
-                PK3_AppVersion.major = Usb_read_array[12];
-                PK3_AppVersion.minor = Usb_read_array[13];
-                PK3_AppVersion.dot = Usb_read_array[14];
+                PK3_AppVersion.type = Usb_read_array[10];
+                PK3_AppVersion.major = Usb_read_array[11];
+                PK3_AppVersion.minor = Usb_read_array[12];
+                PK3_AppVersion.dot = Usb_read_array[13];
+
+                PK3_MagicKey = Usb_read_array[30] + (Usb_read_array[31] << 8) + (Usb_read_array[32] << 16);
+                //printf("Magic key is %x\n", PK3_MagicKey);
+                //printf("Firmware version is  %u.%u.%u\n", FirmwareVersion.major, FirmwareVersion.minor, FirmwareVersion.dot);
+                //printf("PK3_OSVersion is  %u.%u.%u.%u\n", PK3_OSVersion.type, PK3_OSVersion.major, PK3_OSVersion.minor, PK3_OSVersion.dot);
+                //printf("PK3_AppVersion is  %u.%u.%u.%u\n", PK3_AppVersion.type, PK3_AppVersion.major, PK3_AppVersion.minor, PK3_AppVersion.dot);
+
             }
         }
         else
@@ -2556,7 +3421,16 @@ bool CPICkitFunctions::FindDevice(_TCHAR* device)
 			break;
 		}
 	}
-	DeviceBuffers = &BlnkBuffs;
+    
+    // printf("Part is %s\n\r", DevFile.PartsList[i].PartName);
+
+    if (DevFile.PartsList[i].ProgramMem > MAX_MEM)  // Allocate more memory for ProgramMem buffer only if default size is not enough
+    {
+        DeviceBuffers->ResizeProgramMemory(DevFile.PartsList[i].ProgramMem);
+        BlankBuffers->ResizeProgramMemory(DevFile.PartsList[i].ProgramMem);
+    }
+    
+    DeviceBuffers = &BlnkBuffs;
 	ResetBuffers();
 	DeviceBuffers = &DevBuffs;
 	return result;
@@ -2758,6 +3632,15 @@ bool CPICkitFunctions::ReadDeviceFile(_TCHAR* path)
 			fread(&DevFile.PartsList[i].DebugReserved8Script, sizeof(DevFile.PartsList[i].DebugReserved8Script), 1, datfile);
 			//fread(&DevFile.PartsList[i].DebugReserved9Script, sizeof(DevFile.PartsList[i].DebugReserved9Script), 1, datfile); // Removed for compat level 6
 			fread(&DevFile.PartsList[i].LVPScript, sizeof(DevFile.PartsList[i].LVPScript), 1, datfile); // Added for compat level 6
+            // Fill the config masks/blanks for >9 which aren't stored in device file
+            for (j = 9; j < 18; j++)
+            {
+                DevFile.PartsList[i].ConfigMasks[j] = 0xffff;
+            }
+            for (j = 9; j < 18; j++)
+            {
+                DevFile.PartsList[i].ConfigBlank[j] = 0xffff;
+            }
 		}
 
 		// load device scripts
@@ -3243,43 +4126,97 @@ bool CPICkitFunctions::ResetPICkit2(void)
 
 void CPICkitFunctions::writeConfigInsideProgramMem(void)
 {
-	int lastBlock;
+	//int lastBlock;
 	int word, bite;
+    //int scriptRunsToWrCfgs;
 	unsigned int memWord;
 
     RunScript(SCR_PROG_ENTRY, 1);
-    lastBlock = DevFile.PartsList[ActivePart].ProgramMem -
-                    DevFile.PartsList[ActivePart].ProgMemWrWords;
+
+    if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
+    { // if prog mem address set script exists for this part
+        DownloadAddress3(0);
+        RunScript(SCR_PROGMEM_WR_PREP, 1);
+    }
+
+    // Calculate scriptRunsToWrCfgs to work with parts which can't write all configs with a single write
+    // E.g. PIC24EP, dsPIC33EP
+    // scriptRunsToWrCfgs = DevFile.PartsList[ActivePart].ConfigWords
+    //    / DevFile.PartsList[ActivePart].ProgMemWrWords + 1;
+    // lastBlock = DevFile.PartsList[ActivePart].ProgramMem -
+    //    DevFile.PartsList[ActivePart].ProgMemWrWords * scriptRunsToWrCfgs;
+    
+    int wordsPerWrite = DevFile.PartsList[ActivePart].ProgMemWrWords;
+    int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr /
+        DevFile.Families[ActiveFamily].ProgMemHexBytes;
+    int scriptRunsToWrCfgs = (DevFile.PartsList[ActivePart].ProgramMem - configLocation)
+        / wordsPerWrite;
+    if (((DevFile.PartsList[ActivePart].ProgramMem - configLocation) % wordsPerWrite) != 0)
+        scriptRunsToWrCfgs += 1;
+
+    int lastBlock = DevFile.PartsList[ActivePart].ProgramMem -
+        wordsPerWrite * scriptRunsToWrCfgs;
+
+    int bytesPerWord = DevFile.Families[ActiveFamily].BytesPerLocation;
+    int scriptRunsToUseDownload = DOWNLOAD_BUFFER_SIZE /
+        (wordsPerWrite * bytesPerWord);
+    int wordsPerLoop = scriptRunsToUseDownload * wordsPerWrite;
+    int wordsWritten = 0;
+    int wordsToWrite = wordsPerWrite * scriptRunsToWrCfgs;
+
+
     if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
     { // if prog mem address set script exists for this part
         DownloadAddress3(lastBlock * DevFile.Families[ActiveFamily].AddressIncrement);
         RunScript(SCR_PROGMEM_WR_PREP, 1);
     }
     unsigned char downloadBuffer[DOWNLOAD_BUFFER_SIZE];
-    int downloadIndex = 0;
-    for (word = 0; word < DevFile.PartsList[ActivePart].ProgMemWrWords; word++)
+    //int downloadIndex = 0;
+    
+    do
     {
-        memWord = DeviceBuffers->ProgramMemory[lastBlock++];
-        if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
+        int downloadIndex = 0;
+        //for (word = 0; word < (DevFile.PartsList[ActivePart].ProgMemWrWords * scriptRunsToWrCfgs); word++)
+        for (word = 0; word < wordsPerLoop; word++)
         {
-            memWord = memWord << 1;
-        }
-        downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
-        for (bite = 1; bite < DevFile.Families[ActiveFamily].BytesPerLocation; bite++)
-        {
-            memWord >>= 8;
+            if (wordsWritten == wordsToWrite)
+            {
+                break; // for cases where ProgramMemSize%WordsPerLoop != 0
+            }
+    
+            memWord = DeviceBuffers->ProgramMemory[lastBlock++];
+            if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
+            {
+                memWord = memWord << 1;
+            }
+            //$$$Bequest333 and JAKA
+            if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
+                _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+            {
+                memWord = reverse16Bits(memWord);
+            }
+            //$$$
+
             downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
+            for (bite = 1; bite < DevFile.Families[ActiveFamily].BytesPerLocation; bite++)
+            {
+                memWord >>= 8;
+                downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
+            }
+            wordsWritten++;
+
+        }
+        // download data
+        int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
+        while (dataIndex < downloadIndex)
+        {
+            dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
         }
 
-    }
-    // download data
-    int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
-    while (dataIndex < downloadIndex)
-    {
-        dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
-    }
+        //RunScript(SCR_PROGMEM_WR, scriptRunsToWrCfgs);
+        RunScript(SCR_PROGMEM_WR, word / wordsPerWrite);
+    } while (wordsWritten < wordsToWrite);
 
-    RunScript(SCR_PROGMEM_WR, 1);
     RunScript(SCR_PROG_EXIT, 1);
 }
 
@@ -3314,18 +4251,29 @@ bool CPICkitFunctions::FamilyIsdsPIC33F(void)
 			return false;
         }  
 
-bool CPICkitFunctions::FamilyIsPIC24F(void)
+bool CPICkitFunctions::FamilyIsPIC24FJ(void)
         {
-			int x = _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC24F", 6);
+			int x = _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC24FJ", 7);
 			if (x == 0)
 				return true;
 			return false;
         }
 
+
 void CPICkitFunctions::SetTimerFunctions(bool usePercent, bool useNewlines)
 {
 	usePercentTimer = usePercent; // give progress info with % completion instead of rotating backslash
 	useTimerNewlines = useNewlines; // each update is on a newline - intended for GUI interfaces.
+}
+
+void CPICkitFunctions::disableBlankSkipping(void)
+{
+    skipBlankSections = false;
+}
+
+void CPICkitFunctions::setI2CAddress(unsigned char address)
+{
+    I2CAddress = address;
 }
 
 bool CPICkitFunctions::SearchDevice(int familyIndex)
@@ -3375,6 +4323,28 @@ bool CPICkitFunctions::SearchDevice(int familyIndex)
                 deviceID >>= 1;         // midrange/baseline part results must be shifted by 1
             }
             deviceID &= (unsigned int)DevFile.Families[familyIndex].DeviceIDMask; // mask off version bits.
+
+            if (FamilyIsEEPROM()
+                && (DevFile.Families[familyIndex].DeviceIDMask == 0xffffff))  // Reverse SPI FLASH JEDEC DEVID and MFG ID byte order for better readability
+            {
+                deviceID = ((deviceID << 16) & 0x00ff0000) | (deviceID & 0x0000ff00) | ((deviceID >> 16) & 0x000000ff);
+            }
+
+            // JAKA
+            //printf("Family Name = %s\n", DevFile.Families[familyIndex].FamilyName);
+            //printf("Device ID before reverse = %04X\n", deviceID);
+            if(_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0)
+            {
+                deviceID = reverse16Bits(deviceID);
+                deviceID >>= 2;
+            }
+            if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
+            {
+                deviceID = reverse16Bits(deviceID);
+            }
+            // printf("Device ID after reverse = %04X\n", deviceID);
+            // END JAKA
+
 
             // Search through the device file to see if we find the part
             ActivePart = 0; // no device is default.
@@ -3807,7 +4777,7 @@ int CPICkitFunctions::PEGetCRC(unsigned int startAddress, unsigned int lengthByt
     int commOffSet = 0;
     commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
     commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
-    commandArrayp[commOffSet++] = 19;
+    commandArrayp[commOffSet++] = 21;   // was 19, increased because delay added 
     commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
     commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
     commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
@@ -3825,9 +4795,19 @@ int CPICkitFunctions::PEGetCRC(unsigned int startAddress, unsigned int lengthByt
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 8) & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 16) & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 24) & 0xFF);
+    commandArrayp[commOffSet++] = SCMD_DELAY_LONG;
+    commandArrayp[commOffSet++] = 0x0b; // 5.46ms*11 = 60,1 ms. Tests with PIC32MX170F256B showed that minimum needed 
+                                        // delay is 10*long with PICkit2. With PICkit3, no delay is needed at all.
+                                        // To be checked if 512 kB chips require longer delay.
     commandArrayp[commOffSet++] = SCMD_JT2_GET_PE_RESP;
     commandArrayp[commOffSet++] = SCMD_JT2_GET_PE_RESP;
     writeUSB(commandArrayp, commOffSet);
+
+    // wait (lengthBytes) * (0.6 seconds / 256 kB) for the results.
+    // float sleepTime = (float)DevFile.PartsList[ActivePart].ProgramMem * ((float)600 / (float)66300);
+    float sleepTime = (float)lengthBytes * ((float)600 / (float)262144);
+    Sleep((int)sleepTime);  // WHY pk2cmd requires this delay while GUI sw doesn't???
+
     if (BusErrorCheck())    // Any timeouts?
     {
         return 0;           // yes - abort
@@ -3836,12 +4816,16 @@ int CPICkitFunctions::PEGetCRC(unsigned int startAddress, unsigned int lengthByt
     {
         return 0;
     }
+    
     if ((Usb_read_array[3] != 8) || (Usb_read_array[1] != 0)) // response code 0 = success
     {
         return 0;
     }
 
     int crc = (int)(Usb_read_array[5] + (Usb_read_array[6] << 8));
+
+    // printf("Lengthbytes = %d\n", lengthBytes);
+    // printf("PE calculated crc = 0x%x\n", crc);
 
     return crc;
 }
@@ -3861,6 +4845,20 @@ bool CPICkitFunctions::PE_DownloadAndConnect(void)
     printf("Downloading Programming Executive...\n");
 	fflush(stdout);
     
+    //if (_tcsncmp(DevFile.PartsList[ActivePart].PartName, "TCHIP-USB-MX2", 13) == 0 ||
+    //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX2", 8) == 0 ||
+    //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX1", 8) == 0)
+    if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 0x20)
+    {
+        CPIC32PE::PIC32_PE = &CPIC32PE::PIC32_PE_RS32[0];
+        CPIC32PE::pe_Version = K_PIC32_PE_RS32_VERSION;
+    }
+    else
+    {
+        CPIC32PE::PIC32_PE = &CPIC32PE::PIC32_PE_RS128[0];
+        CPIC32PE::pe_Version = K_PIC32_PE_RS128_VERSION;
+    }
+
     RunScript(SCR_PROG_ENTRY, 1);
     UploadData();
     if ((Usb_read_array[1] & 0x80) == 0)
@@ -3874,8 +4872,9 @@ bool CPICkitFunctions::PE_DownloadAndConnect(void)
     EnterSerialExecution();
     DownloadPE();
     int PEVersion = ReadPEVersion();
-    if (PEVersion != K_PIC32_PE_VERSION)
-    {
+    // if (PEVersion != K_PIC32_PE_VERSION)
+    if (PEVersion != CPIC32PE::pe_Version)
+        {
         printf("...FAILED\n");
 		fflush(stdout);
         RunScript(SCR_PROG_EXIT, 1);
@@ -4035,7 +5034,12 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
     // User IDs & Configs are in last block of boot mem
     DeviceBuffers->UserIDs[0] = (unsigned int)upload_buffer[uploadIndex];
     DeviceBuffers->UserIDs[1] = (unsigned int)upload_buffer[uploadIndex + 1];
-    uploadIndex += bytesPerWord;
+    //timijk: quick fix for PIC32MX1xx/2xx
+   //uploadIndex += bytesPerWord; 
+    if (DevFile.PartsList[ActivePart].ConfigAddr != DevFile.PartsList[ActivePart].UserIDAddr)
+    {
+        uploadIndex += bytesPerWord;
+    }
 
     // Config Memory ========================================================================================
     for (int cfg = 0; cfg < DevFile.PartsList[ActivePart].ConfigWords; cfg++)
@@ -4121,7 +5125,17 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
     // Write Program Memory ====================================================================================
     
 	// Write 512 bytes (128 words) per memory row - so need 2 downloads per row.
-	int wordsPerLoop = 128;
+    // MX1xx, MX2xx: (32 words) per memory row - one download per row.
+    // timijk
+    int wordsPerLoop;
+    //if (_tcsncmp(DevFile.PartsList[ActivePart].PartName, "TCHIP-USB-MX2", 13) == 0 ||
+    //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX2", 8) == 0 ||
+    //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX1", 8) == 0)
+    if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 0x20)
+    {
+        wordsPerLoop = 32;
+    }
+    else { wordsPerLoop = 128; }
     
 	if (progmem)
 	{
@@ -4140,19 +5154,28 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 		timerStart((_TCHAR*)"Write Flash", endOfBuffer / wordsPerLoop);
 	    
 		// Send PROGRAM command header
-		PEProgramHeader(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(writes * 512));
-	    
+        //timijk 
+        if (wordsPerLoop == 128) PEProgramHeader(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(writes * 512));
+        else PEProgramHeader(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(writes * 128));
+
 		// First block of data
 		int index = 0;
-		PEProgramSendBlock(index, false); // no response
-		writes--;
+		
+        //timijk
+        if (wordsPerLoop == 128) PEProgramSendBlock(index, false); // no response
+        else PEProgramSendBlock2(index, false);
+
+        writes--;
 		timerPrint();
 	    
 		do
 		{
 			index += wordsPerLoop;
-			PEProgramSendBlock(index, true); // response
-			timerPrint();
+            //timijk
+            if (wordsPerLoop == 128) PEProgramSendBlock(index, true); // response
+            else PEProgramSendBlock2(index, true); // response
+            
+            timerPrint();
 		} while (--writes > 0);
 	    
 		// get last response
@@ -4168,7 +5191,16 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 		// Write Boot Memory ====================================================================================
 
 		// Write 512 bytes (128 words) per memory row - so need 2 downloads per row.
-		wordsPerLoop = 128;
+         // MX1xx, MX2xx: (32 words) per memory row - one download per row.
+            // timijk
+        //if (_tcsncmp(DevFile.PartsList[ActivePart].PartName, "TCHIP-USB-MX2", 13) == 0 ||
+        //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX2", 8) == 0 ||
+        //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX1", 8) == 0)
+        if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 0x20)
+        {
+            wordsPerLoop = 32;
+        }
+        else { wordsPerLoop = 128; }
 
 		// First, find end of used Program Memory
 		endOfBuffer = FindLastUsedInBuffer(DeviceBuffers->ProgramMemory,
@@ -4189,17 +5221,25 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 		timerStart((_TCHAR*)"Write Boot", endOfBuffer / wordsPerLoop);
 
 		// Send PROGRAM command header
-		PEProgramHeader(K_P32_BOOT_FLASH_START_ADDR, (unsigned int)(writes * 512));
+		//timijk
+        if (wordsPerLoop == 128) PEProgramHeader(K_P32_BOOT_FLASH_START_ADDR, (unsigned int)(writes * 512));
+        else PEProgramHeader(K_P32_BOOT_FLASH_START_ADDR, (unsigned int)(writes * 128));
 
 		// First block of data
 		index = progMemP32;
-		PEProgramSendBlock(index, false); // no response
-		writes--;
+        //timijk
+        if (wordsPerLoop == 128) PEProgramSendBlock(index, false); // no response
+        else PEProgramSendBlock2(index, false);
+        
+        writes--;
 
 		do
 		{
 			index += wordsPerLoop;
-			PEProgramSendBlock(index, true); // response
+            //timijk
+            if (wordsPerLoop == 128) PEProgramSendBlock(index, true); // response
+            else PEProgramSendBlock2(index, true);
+
 			timerPrint();
 		} while (--writes > 0);
 
@@ -4207,123 +5247,283 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 		writeUSB(commandArrayp, commOffSet);
 		timerStop();
 	}
-	// Write User ID Memory ===================================================================================
-	if (uidmem)
-	{
-		 unsigned int cfgBuf[1];
-		cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
-		cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
-		cfgBuf[0] |= 0xFFFF0000;
 
-		unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)(bootMemP32 * 4);
-		commOffSet = 0;
-		commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
-		commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
-		commandArrayp[commOffSet++] = 18;
-		commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
-		commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[0] & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;      
-		writeUSB(commandArrayp, commOffSet);         
-	}
+    //////////////////////////////////////////////
+    // User ID and config - different handling for PIC32MX original' family where UserIDAddr
+    // doesn't contain any config bits.
+    /////////////////////////////////////////////////
 
-    // Write Config Memory ====================================================================================
-	if (cfgmem)
-		{
-		unsigned int cfgBuf[3];
-		cfgBuf[0] = DeviceBuffers->ConfigWords[0] | (DeviceBuffers->ConfigWords[1] << 16);
-		cfgBuf[0] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[0] & DevFile.PartsList[ActivePart].ConfigBlank[0])
-					| ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
-		cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
-		cfgBuf[1] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[2] & DevFile.PartsList[ActivePart].ConfigBlank[2])
-					| ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[3] & DevFile.PartsList[ActivePart].ConfigBlank[3]) << 16);
-		cfgBuf[2] = DeviceBuffers->ConfigWords[4] | (DeviceBuffers->ConfigWords[5] << 16);
-		cfgBuf[2] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[4] & DevFile.PartsList[ActivePart].ConfigBlank[4])
-					| ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[5] & DevFile.PartsList[ActivePart].ConfigBlank[5]) << 16);
-	    
-		unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32 + 1) * 4);
-		commOffSet = 0;
-		commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
-		commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
-		commandArrayp[commOffSet++] = 36;
-		commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
-		commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[0] & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
-		startAddress += 4;
-		commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
-		commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[1] & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;  
-		startAddress += 4;          
-		writeUSB(commandArrayp, commOffSet);         
+    if (DevFile.PartsList[ActivePart].ConfigAddr == DevFile.PartsList[ActivePart].UserIDAddr)
+    {
+        // PIC32MX 1xx/2xx
+        /*
+        // Write User ID Memory ===================================================================================
+        if (uidmem)
+        {
+            unsigned int cfgBuf[1];
+            cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
+            cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
+            cfgBuf[0] |= 0xFFFF0000;
 
-		commOffSet = 0;
-		commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
-		commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
-		commandArrayp[commOffSet++] = 18;
-		commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
-		commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
-		commandArrayp[commOffSet++] = 0x00;
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-		commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[2] & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 8) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 16) & 0xFF);
-		commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 24) & 0xFF);
-		commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;       
-		writeUSB(commandArrayp, commOffSet);
-	}
+            unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)(bootMemP32 * 4);
+            commOffSet = 0;
+            commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
+            commandArrayp[commOffSet++] = 18;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[0] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            writeUSB(commandArrayp, commOffSet);
+        }
+        */
+        // Write Config Memory ====================================================================================
+        if (cfgmem)
+        {
+            unsigned int cfgBuf[4];
+            
+            cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
+            cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
+
+            
+            cfgBuf[0] |= (DeviceBuffers->ConfigWords[1] << 16);
+            cfgBuf[0] |= ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
+            cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
+            cfgBuf[1] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[2] & DevFile.PartsList[ActivePart].ConfigBlank[2])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[3] & DevFile.PartsList[ActivePart].ConfigBlank[3]) << 16);
+            cfgBuf[2] = DeviceBuffers->ConfigWords[4] | (DeviceBuffers->ConfigWords[5] << 16);
+            cfgBuf[2] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[4] & DevFile.PartsList[ActivePart].ConfigBlank[4])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[5] & DevFile.PartsList[ActivePart].ConfigBlank[5]) << 16);
+            cfgBuf[3] = DeviceBuffers->ConfigWords[6] | (DeviceBuffers->ConfigWords[7] << 16);
+            cfgBuf[3] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[6] & DevFile.PartsList[ActivePart].ConfigBlank[6])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[7] & DevFile.PartsList[ActivePart].ConfigBlank[7]) << 16);
+
+            //unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32 + 1) * 4);
+            unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32) * 4);
+            commOffSet = 0;
+            commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
+            commandArrayp[commOffSet++] = 36;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[0] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            startAddress += 4;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[1] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            startAddress += 4;
+            writeUSB(commandArrayp, commOffSet);
+
+            commOffSet = 0;
+            commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
+            commandArrayp[commOffSet++] = 36;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[2] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            startAddress += 4;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[3] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[3] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[3] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[3] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            startAddress += 4;
+            writeUSB(commandArrayp, commOffSet);
+        }
+    }
+    else // PIC32MX 3xx/4xx
+    {
+
+        // Write User ID Memory ===================================================================================
+        if (uidmem)
+        {
+            unsigned int cfgBuf[1];
+            cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
+            cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
+            cfgBuf[0] |= 0xFFFF0000;
+
+            unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)(bootMemP32 * 4);
+            commOffSet = 0;
+            commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
+            commandArrayp[commOffSet++] = 18;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[0] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            writeUSB(commandArrayp, commOffSet);
+        }
+
+        // Write Config Memory ====================================================================================
+        if (cfgmem)
+        {
+            unsigned int cfgBuf[3];
+            cfgBuf[0] = DeviceBuffers->ConfigWords[0] | (DeviceBuffers->ConfigWords[1] << 16);
+            cfgBuf[0] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[0] & DevFile.PartsList[ActivePart].ConfigBlank[0])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
+            cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
+            cfgBuf[1] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[2] & DevFile.PartsList[ActivePart].ConfigBlank[2])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[3] & DevFile.PartsList[ActivePart].ConfigBlank[3]) << 16);
+            cfgBuf[2] = DeviceBuffers->ConfigWords[4] | (DeviceBuffers->ConfigWords[5] << 16);
+            cfgBuf[2] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[4] & DevFile.PartsList[ActivePart].ConfigBlank[4])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[5] & DevFile.PartsList[ActivePart].ConfigBlank[5]) << 16);
+
+            unsigned int startAddress = K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32 + 1) * 4);
+            commOffSet = 0;
+            commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
+            commandArrayp[commOffSet++] = 36;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[0] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[0] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            startAddress += 4;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[1] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[1] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            startAddress += 4;
+            writeUSB(commandArrayp, commOffSet);
+
+            commOffSet = 0;
+            commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
+            commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
+            commandArrayp[commOffSet++] = 18;
+            commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
+            commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = 0x03;     // WORD_PROGRAM
+            commandArrayp[commOffSet++] = 0x00;
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(startAddress & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((startAddress >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
+            commandArrayp[commOffSet++] = (unsigned int)(cfgBuf[2] & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 8) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 16) & 0xFF);
+            commandArrayp[commOffSet++] = (unsigned int)((cfgBuf[2] >> 24) & 0xFF);
+            commandArrayp[commOffSet++] = SCMD_JT2_WAIT_PE_RESP;
+            writeUSB(commandArrayp, commOffSet);
+        }
+    }
 
     
     return true;
@@ -4434,6 +5634,63 @@ void CPICkitFunctions::PEProgramSendBlock(int index, bool peResp)
     writeUSB(commandArray, commOffset);        
 }
 
+
+void CPICkitFunctions::PEProgramSendBlock2(int index, bool peResp)
+{ //timijk Set dowdloadBuffer to only 128!
+    unsigned char downloadBuffer[128];
+    unsigned int memWord = 0;
+    int dnldIndex = 0;
+    int memMax = (int)DevFile.PartsList[ActivePart].ProgramMem;
+    int i;
+
+    // first half
+    for (i = 0; i < 32; i++)
+    {
+        if (index < memMax)
+            memWord = DeviceBuffers->ProgramMemory[index++];
+        else
+            memWord = 0xFFFFFFFF;
+        downloadBuffer[dnldIndex++] = (unsigned char)(memWord & 0xFF);
+        downloadBuffer[dnldIndex++] = (unsigned char)((memWord >> 8) & 0xFF);
+        downloadBuffer[dnldIndex++] = (unsigned char)((memWord >> 16) & 0xFF);
+        downloadBuffer[dnldIndex++] = (unsigned char)((memWord >> 24) & 0xFF);
+    }
+    // Download first half of block
+    int dataIndex = DataClrAndDownload(downloadBuffer, 256, 0);
+    while ((dnldIndex - dataIndex) > 62) // DataDownload send 62 bytes per call
+    {
+        dataIndex = DataDownload(downloadBuffer, 256, dataIndex);
+    }
+    // send rest of data with script cmd
+    int length = dnldIndex - dataIndex;
+    unsigned char commandArray[BUF_SIZE];
+    int commOffset = 0;
+    commandArray[commOffset++] = FWCMD_DOWNLOAD_DATA;
+    commandArray[commOffset++] = (unsigned char)(length & 0xFF);
+    for (i = 0; i < length; i++)
+    {
+        commandArray[commOffset++] = downloadBuffer[dataIndex + i];
+    }
+
+    //timijk
+    commandArray[commOffset++] = FWCMD_EXECUTE_SCRIPT;
+    if (peResp) commandArray[commOffset++] = 7;
+    else commandArray[commOffset++] = 6;  //bytes of script
+    commandArray[commOffset++] = SCMD_JT2_SENDCMD;
+    commandArray[commOffset++] = 0x0E;    //ETAP_FASTDATA
+    commandArray[commOffset++] = SCMD_JT2_XFRFASTDAT_BUF;
+    commandArray[commOffset++] = SCMD_LOOP;  //Loop _JT2_XFRFASTDAT_BUF
+    commandArray[commOffset++] = 0x01;
+    commandArray[commOffset++] = 0x1F;   //total 0x20 * 4 bytes = 128 bytes
+
+    if (peResp)
+    {
+        commandArray[commOffset++] = 0xB3; // KONST.JT2_PE_PROG_RESP;
+    }
+
+    writeUSB(commandArray, commOffset);
+}
+
 bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bool cfgmem)
 {
 	int bufferCRC;
@@ -4463,6 +5720,10 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
 	    
 		deviceCRC = PEGetCRC(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(progMemP32 * bytesPerWord));
 	    
+        // printf("bufferCRC  = 0x%x\n", bufferCRC);
+        // printf("deviceCRC  = 0x%x\n", deviceCRC);
+
+
 		if (bufferCRC != deviceCRC)
 		{
 			_tcsncpy_s(ReadError.memoryType, "Program", 7);
@@ -4470,12 +5731,12 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
 			VddOff();
 			return false;
 		}
-
+        
 		// Verify Boot Memory ====================================================================================
 		bufferCRC = p32CRC_buf(DeviceBuffers->ProgramMemory, (unsigned int)progMemP32, (unsigned int)bootMemP32);
 
 		deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR, (unsigned int)(bootMemP32 * bytesPerWord));
-
+        
 		if (bufferCRC != deviceCRC)
 		{
 			_tcsncpy_s(ReadError.memoryType, "Boot", 4);
@@ -4483,57 +5744,137 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
 			VddOff();
 			return false;
 
-		}            
+		} 
+        
 	}
 
     // Verify User ID Memory ====================================================================================  
     if (uidmem)
 	{
-		unsigned int cfgBuf[1];
-		cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
-		cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
-		cfgBuf[0] |= 0xFFFF0000;
+        if (DevFile.PartsList[ActivePart].ConfigAddr == DevFile.PartsList[ActivePart].UserIDAddr)
+        {   // PIC32MX1xx/2xx 
+            /*
+            unsigned int cfgBuf[1];
+            cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
+            cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
+            cfgBuf[0] |= 0xFFFF0000;
 
-		bufferCRC = p32CRC_buf(cfgBuf, (unsigned int)0, (unsigned int)1);
+            bufferCRC = p32CRC_buf(cfgBuf, (unsigned int)0, (unsigned int)1);
 
-		deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR + (unsigned int)(bootMemP32 * bytesPerWord), (unsigned int)(1 * bytesPerWord));
+            deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR + (unsigned int)(bootMemP32 * bytesPerWord), (unsigned int)(1 * bytesPerWord));
+            // deviceCRC = PEGetCRC((unsigned int)(DevFile.PartsList[ActivePart].UserIDAddr), (unsigned int)(1 * bytesPerWord));
 
-		if (bufferCRC != deviceCRC)
-		{
-			_tcsncpy_s(ReadError.memoryType, "User ID", 7);
-			RunScript(SCR_PROG_EXIT, 1);
-			VddOff();
-			return false;
-		}             
+            unsigned int tempint = K_P32_BOOT_FLASH_START_ADDR;
+            printf("K_P32_BOOT_FLASH_START_ADDR = 0x%x\n", tempint);
+            printf("bootMemP32 = 0x%x\n", bootMemP32);
+            printf("UserIDAddR = 0x%x\n", DevFile.PartsList[ActivePart].UserIDAddr);
+
+            printf("bufferCRC  = 0x%x\n", bufferCRC);
+            printf("deviceCRC  = 0x%x\n", deviceCRC);
+
+            unsigned int idBuf[1];
+            idBuf[0] = 
+
+            printf("cfgBuf[0] = 0x%x\n", cfgBuf[0]);
+
+
+            if (bufferCRC != deviceCRC)
+            {
+                _tcsncpy_s(ReadError.memoryType, "User ID", 7);
+                RunScript(SCR_PROG_EXIT, 1);
+                VddOff();
+                return false;
+            }
+            */
+        }
+        else // PIC32MX3xx/4xx 
+        {
+            unsigned int cfgBuf[1];
+            cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
+            cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
+            cfgBuf[0] |= 0xFFFF0000;
+
+            bufferCRC = p32CRC_buf(cfgBuf, (unsigned int)0, (unsigned int)1);
+
+            deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR + (unsigned int)(bootMemP32 * bytesPerWord), (unsigned int)(1 * bytesPerWord));
+
+            if (bufferCRC != deviceCRC)
+            {
+                _tcsncpy_s(ReadError.memoryType, "User ID", 7);
+                RunScript(SCR_PROG_EXIT, 1);
+                VddOff();
+                return false;
+            }
+        }
+        
 	}
 
     // Verify Config Memory ====================================================================================  
     if (cfgmem)
 	{
-		unsigned int cfgBuf[3];
-		cfgBuf[0] = DeviceBuffers->ConfigWords[0] | (DeviceBuffers->ConfigWords[1] << 16);
-		cfgBuf[0] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[0] & DevFile.PartsList[ActivePart].ConfigBlank[0])
-					| ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
-		cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
-		cfgBuf[1] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[2] & DevFile.PartsList[ActivePart].ConfigBlank[2])
-					| ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[3] & DevFile.PartsList[ActivePart].ConfigBlank[3]) << 16);
-		cfgBuf[2] = DeviceBuffers->ConfigWords[4] | (DeviceBuffers->ConfigWords[5] << 16);
-		cfgBuf[2] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[4] & DevFile.PartsList[ActivePart].ConfigBlank[4])
-					| ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[5] & DevFile.PartsList[ActivePart].ConfigBlank[5]) << 16);
+        if (DevFile.PartsList[ActivePart].ConfigAddr == DevFile.PartsList[ActivePart].UserIDAddr)
+        {
+            // For PIC32MX1xx and 2xx, user ID and config memory are verified simultaneously!
+            
+            unsigned int cfgBuf[4];
+            
+            cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
+            cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
+            
+            cfgBuf[0] |= (DeviceBuffers->ConfigWords[1] << 16);
+            cfgBuf[0] |= ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
+            cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
+            cfgBuf[1] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[2] & DevFile.PartsList[ActivePart].ConfigBlank[2])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[3] & DevFile.PartsList[ActivePart].ConfigBlank[3]) << 16);
+            cfgBuf[2] = DeviceBuffers->ConfigWords[4] | (DeviceBuffers->ConfigWords[5] << 16);
+            cfgBuf[2] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[4] & DevFile.PartsList[ActivePart].ConfigBlank[4])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[5] & DevFile.PartsList[ActivePart].ConfigBlank[5]) << 16);
+            cfgBuf[3] = DeviceBuffers->ConfigWords[6] | (DeviceBuffers->ConfigWords[7] << 16);
+            cfgBuf[3] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[6] & DevFile.PartsList[ActivePart].ConfigBlank[6])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[7] & DevFile.PartsList[ActivePart].ConfigBlank[7]) << 16);
+
+            bufferCRC = p32CRC_buf(cfgBuf, (unsigned int)0, (unsigned int)4);
+
+            deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32 ) * bytesPerWord), (unsigned int)(4 * bytesPerWord));
+
+            // printf("bufferCRC  = 0x%x\n", bufferCRC);
+            // printf("deviceCRC  = 0x%x\n", deviceCRC);
+
+            if (bufferCRC != deviceCRC)
+            {
+                _tcsncpy_s(ReadError.memoryType, "Config or usrID", 15);
+                RunScript(SCR_PROG_EXIT, 1);
+                VddOff();
+                return false;
+            }
+        }
+        else
+        {   // PIC32MX3xx/4xx 
+            unsigned int cfgBuf[3];
+            cfgBuf[0] = DeviceBuffers->ConfigWords[0] | (DeviceBuffers->ConfigWords[1] << 16);
+            cfgBuf[0] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[0] & DevFile.PartsList[ActivePart].ConfigBlank[0])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
+            cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
+            cfgBuf[1] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[2] & DevFile.PartsList[ActivePart].ConfigBlank[2])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[3] & DevFile.PartsList[ActivePart].ConfigBlank[3]) << 16);
+            cfgBuf[2] = DeviceBuffers->ConfigWords[4] | (DeviceBuffers->ConfigWords[5] << 16);
+            cfgBuf[2] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[4] & DevFile.PartsList[ActivePart].ConfigBlank[4])
+                | ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[5] & DevFile.PartsList[ActivePart].ConfigBlank[5]) << 16);
 
 
-		bufferCRC = p32CRC_buf(cfgBuf, (unsigned int)0, (unsigned int)3);
+            bufferCRC = p32CRC_buf(cfgBuf, (unsigned int)0, (unsigned int)3);
 
-		deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32 + 1) * bytesPerWord), (unsigned int)(3 * bytesPerWord));
+            deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR + (unsigned int)((bootMemP32 + 1) * bytesPerWord), (unsigned int)(3 * bytesPerWord));
 
-		if (bufferCRC != deviceCRC)
-		{
-			_tcsncpy_s(ReadError.memoryType, "Configuration", 13);
-			RunScript(SCR_PROG_EXIT, 1);
-			VddOff();
-			return false;
-		}             
-	}
+            if (bufferCRC != deviceCRC)
+            {
+                _tcsncpy_s(ReadError.memoryType, "Configuration", 13);
+                RunScript(SCR_PROG_EXIT, 1);
+                VddOff();
+                return false;
+            }
+        }
+    }
 
     RunScript(SCR_PROG_EXIT, 1);
 	VddOff();
@@ -5360,6 +6701,11 @@ PickitType_t CPICkitFunctions::type() const
     return  m_Driver.type();
 }
 
+PickitWriteStatus_t CPICkitFunctions::wrStatus() const
+{
+    return  m_Driver.wrStatus();
+}
+
 bool CPICkitFunctions::useProgExec33(void)
         {
             if (FamilyIsdsPIC33F() || FamilyIsPIC24H())
@@ -6165,7 +7511,8 @@ bool CPICkitFunctions::PE24FVerify(bool writeVerify, int lastLocation, bool PECo
 
 bool CPICkitFunctions::useProgExec24F(void)
         {
-            if (FamilyIsPIC24F())
+            if (FamilyIsPIC24FJ() && DevFile.PartsList[ActivePart].ProgMemPanelBufs == 0x30)	// Currently only PE 01B for 24FJ supported
+            //if (FamilyIsPIC24FJ())
             {
                 if (DevFile.PartsList[ActivePart].ProgramMem >= 4096)
                 // don't use PE on the smallest parts.

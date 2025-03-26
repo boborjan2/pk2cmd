@@ -60,6 +60,7 @@ protected:
 	void printConfiguration(void);
 	bool getRange(int* start, int* stop, _TCHAR* str_range);
 	bool getValue(unsigned int* value, _TCHAR* str_value);
+	bool getDecValue(unsigned int* value, _TCHAR* str_value);
 	bool checkSwitch(_TCHAR* argv);
 	bool findPICkit2(int unitIndex);
 	void printMemError(void);
@@ -70,12 +71,14 @@ protected:
 	void displayLicense(void);
 	void displayPartList(int argc, _TCHAR* argv[], _TCHAR* argSearch);
 	static int strnatcmpWrapper(const void *a, const void *b);
+	static int strnatcmpStrWrapper(const void* a, const void* b);
 
 	bool preserveEEPROM;
 	bool hexLoaded;
 	bool usingLowVoltageErase;
 	bool resetOnExit;
 	bool Pk2Operation;		// operation does require connecting to/using PICkit 2
+	bool resetPK3OnExit;		// set to false if -T or -R are used, because reset sets power off and asserts /MCLR
 	int	 pk2UnitIndex;
 	int	 nargc;
 	char* nargv[K_MAX_ARGS];

@@ -43,7 +43,8 @@
 //#define	USB_DEBUG_FLAGS	(USB_DEBUG_XMIT | USB_DEBUG_RECV)
 //#define	USB_DEBUG_FLAGS	USB_DEBUG_FULL
 
-#define	USB_DEBUG_FLAGS		(4 | 8)	// No USB debugging by default
+// #define	USB_DEBUG_FLAGS		(4 | 8)	// No USB debugging by default
+#define	USB_DEBUG_FLAGS		0	// No USB debugging by default
 
 #ifndef __APPLE__
 #include	<usb.h>	// Linux
@@ -81,7 +82,7 @@ extern pickit_dev	*deviceHandle;
 #define	CONFIG_HID		1	// Use HID for pickit configuration
 #define	CONFIG_VENDOR	2	// Vendor specific configuration
 
-#define	NORMAL_MODE		1
+#define	NORMAL_MODE	1
 #define	BOOTLOAD_MODE	2
 #define MPLAB_MODE      3
 
@@ -147,9 +148,19 @@ extern pickit_dev	*deviceHandle;
 
 typedef enum {
     Pickit2,
-    Pickit3
+    Pickit3,
+    pkob,
+    PK2M
 } PickitType_t;
 extern PickitType_t deviceType;
+
+typedef enum
+{
+    notWritten,
+    writeSuccesful,
+    writeTimeout
+} PickitWriteStatus_t;
+extern PickitWriteStatus_t writeStatus;
 
 extern bool	verbose;
 extern int	pickit_interface;
@@ -165,6 +176,7 @@ class CUsbhidioc //: public CDialog
 public:
     CUsbhidioc(void);
     PickitType_t type() const {return m_type;}
+    PickitWriteStatus_t wrStatus() const { return m_wrStatus; }
     char *GetPK2UnitID(void);
     bool FindTheHID(int unitIndex);
     bool ReadReport (char *);
@@ -174,6 +186,7 @@ public:
 protected:
     char m_UnitID[32];
     PickitType_t m_type = Pickit2;
+    PickitWriteStatus_t m_wrStatus = notWritten;
 };
 
 struct scriptInterpreter {

@@ -17,13 +17,27 @@
 //---------------------------------------------------------------------------
 #include "stdafx.h"
 #include "DeviceData.h"
+#include "stdlib.h"
 
 CDeviceData::CDeviceData(void)
 {
+    PmemDepth = MAX_MEM;
+    // ProgramMemory = new unsigned int[PmemDepth];
+    ProgramMemory = (unsigned int*)malloc(sizeof(unsigned int) * PmemDepth);
 }
 
 CDeviceData::~CDeviceData(void)
 {
+    // delete[] ProgramMemory;
+    free(ProgramMemory);
+}
+
+void CDeviceData::ResizeProgramMemory(unsigned int newSize)
+{
+    //delete[] ProgramMemory;
+    PmemDepth = newSize;
+    //ProgramMemory = new unsigned int[PmemDepth];
+    ProgramMemory = (unsigned int*)realloc(ProgramMemory, sizeof(unsigned int) * PmemDepth);
 }
 
 void CDeviceData::ClearAllData(unsigned int progMemSize, unsigned short int eeMemSize, unsigned char numConfigs, 
@@ -57,7 +71,12 @@ void CDeviceData::ClearConfigWords(unsigned char numConfigs, unsigned short int 
         //init configuration to blank
         for (unsigned int i = 0; i < numConfigs; i++)
         {
-            ConfigWords[i] = configBlank[i];
+            if (i < 9) {
+                ConfigWords[i] = configBlank[i];
+            }
+            else {      // JAKA: If more than 9 config words, set blank values to 0xffff
+                ConfigWords[i] = 0xffff;
+            }
         }
     }
 }

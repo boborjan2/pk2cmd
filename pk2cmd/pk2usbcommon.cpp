@@ -618,7 +618,7 @@ bool CUsbhidioc::ReadReport(char InBuffer[])
 	{
         return 0;
 	}
-
+        m_wrStatus = writeStatus;
 	i = recvUSB(deviceHandle, reqLen, (byte *) InBuffer);
 	return i;
 }
@@ -634,6 +634,7 @@ bool CUsbhidioc::WriteReport(char OutputBuffer[], unsigned int nBytes)
 	{
 			return 0;
 	}
+        m_wrStatus = writeStatus;
 
 	for (i = nBytes; i < 65; ++i)
         OutputBuffer [i] = 'Z';  // Pad buffer with Null Commands

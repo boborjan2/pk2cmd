@@ -48,6 +48,7 @@
 // Data
 
 PickitType_t deviceType = Pickit2;
+PickitWriteStatus_t writeStatus = notWritten;
 usb_dev_handle	*deviceHandle = NULL;
 
 // PICkit USB values
@@ -55,10 +56,11 @@ usb_dev_handle	*deviceHandle = NULL;
 const static int pickit_vendorID = 0x04d8;	// Microchip, Inc
 const static int pickit2_productID = 0x0033;	// PICkit 2 FLASH starter kit
 const static int pickit3_productID = 0x900a;	// PICkit 3
+const static int pkob_productID = 0x8107;	// PKOB3
 
 const static int pickit_endpoint_out = 1;		// endpoint 1 address for OUT
 const static int pickit_endpoint_in = 0x81;	// endpoint 0x81 address for IN
-const static int pickit_timeout = 10000;		// timeout in ms
+const static int pickit_timeout = 2000;		// timeout in ms
 
 // Code
 
@@ -113,14 +115,16 @@ int sendUSB(pickit_dev *d, byte *src, int len)
 
 	if (r != reqLen)
 	{
+		//if (1)
 		if (verbose)
 		{
 			printf("sendUSB() PICkit USB write failed, returned %d\n", r);
 			fflush(stdout);
 		}
-
-		return 0;
+                writeStatus = writeTimeout;
+		return 1;//orig. 0
 	}
+        writeStatus = writeSuccesful;
 
 	return 1;
 }
@@ -142,7 +146,7 @@ int readBlock(pickit_dev *d, int len, byte *dest)
 			printf("USB read did not return 64 bytes\n");
 			fflush(stdout);
 		}
-
+                writeStatus = writeTimeout;
 		return 0;
 	}
 
@@ -188,7 +192,7 @@ int recvUSB(pickit_dev *d, int len, byte *dest)
 			printf("recvUSB() PICkit USB read failed\n");
 			fflush(stdout);
 		}
-
+                writeStatus = writeTimeout;
 		return 0;
 	}
 
@@ -230,9 +234,10 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
 
 	if (verbose)
 	{
-        printf("\nLocating USB Microchip PICkit2/3 (0x%04x:0x%04x/0x%04x:0x%04x)\n",
+        printf("\nLocating USB Microchip PICkit2/3/PKOB (0x%04x:0x%04x/0x%04x:0x%04x/0x%04x:0x%04x)\n",
             pickit_vendorID, pickit2_productID,
-            pickit_vendorID, pickit3_productID);
+            pickit_vendorID, pickit3_productID,
+            pickit_vendorID, pkob_productID);
 		fflush(stdout);
 	}
 
@@ -263,7 +268,8 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
 		{
 			if (device->descriptor.idVendor == pickit_vendorID
                 && (device->descriptor.idProduct == pickit2_productID
-                    || device->descriptor.idProduct == pickit3_productID))
+                    || device->descriptor.idProduct == pickit3_productID
+                    || device->descriptor.idProduct == pkob_productID))
 			{
 				if (unitIndex == unitNumber)
 				{
@@ -314,32 +320,34 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
 	#endif
 
 	#ifdef CLAIM_USB
-
-						if (usb_set_configuration(d, CONFIG_VENDOR) < 0)	// if config fails with CONFIG_VENDOR,
-						{
-							if (usb_set_configuration(d, CONFIG_HID) < 0)	// it may be in bootloader, try CONFIG_HID
+						if (device->descriptor.idProduct == pickit2_productID) {	// Do not set configuration 2 for PICkit3, because it doesn't have it!
+														// Trying to set config 2 or claim interface causes PICkit3 to halt on Linux.
+							if (usb_set_configuration(d, CONFIG_VENDOR) < 0)	// if config fails with CONFIG_VENDOR,
+							{
+								if (usb_set_configuration(d, CONFIG_HID) < 0)	// it may be in bootloader, try CONFIG_HID
+								{
+									if (verbose)
+									{
+										printf("Error setting USB configuration.\n");
+										fflush(stdout);
+									}
+	
+									return NULL;
+								}
+							}
+	
+							if (usb_claim_interface(d, pickit_interface))
 							{
 								if (verbose)
 								{
-									printf("Error setting USB configuration.\n");
+									printf("Claim failed-- the USB PICkit2 is in use by another driver.\n"
+										"Do a `dmesg` to see which kernel driver has claimed it--\n"
+										"You may need to `rmmod hid` or patch your kernel's hid driver.\n");
 									fflush(stdout);
 								}
-
+	
 								return NULL;
 							}
-						}
-
-						if (usb_claim_interface(d, pickit_interface))
-						{
-							if (verbose)
-							{
-								printf("Claim failed-- the USB PICkit2 is in use by another driver.\n"
-									"Do a `dmesg` to see which kernel driver has claimed it--\n"
-									"You may need to `rmmod hid` or patch your kernel's hid driver.\n");
-								fflush(stdout);
-							}
-
-							return NULL;
 						}
 	#endif
 
@@ -377,10 +385,15 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
                         }
                         else
                         {
-                            deviceType = Pickit3;
-                            cmd[0] = CMD_GETVERSIONS_MPLAB;
-                            cmd[1] = 0;
-
+                            if (device->descriptor.idProduct == pkob_productID)
+                            {
+                                deviceType = pkob;
+                            }
+                            else
+                            {
+                                deviceType = Pickit3;
+                            }
+                            /*	// This is handled at upper level
                             memset(cmd, 0xAD, 64);
                             cmd[0] = CMD_GETVERSIONS_MPLAB;
                             cmd[1] = 0;
@@ -396,14 +409,27 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
                                 retData[31] != 'k' ||
                                 retData[32] != '3')
                             {
-                                printf("Incompatible PICkit3 firmware detected\n");
-                                printf("Please, upgrade the firmware using PICkit 3 Scripting Tool.\n");
-                                fflush(stdout);
-                                usb_close(deviceHandle);
-                                return NULL;
+                                if (verbose)
+                                {    
+                                     printf("Incompatible PICkit3 firmware detected\n");
+                                     printf("Please, upgrade the firmware using PICkitminus Windows GUI software.\n");
+                                     fflush(stdout);
+                                }
+                                pickit_firmware = (((int) retData[11]) << 16) | ((((int) retData[12]) << 8) & 0xff00) | (((int) retData[13]) & 0xff);
+                                if (retData[10] == 0x99)
+                                {
+                                    pickit_mode = BOOTLOAD_MODE;
+                                }
+                                else
+                                {
+                                    pickit_mode = MPLAB_MODE;
+                                }
+                                
+                                //usb_close(deviceHandle);
+                                //return NULL;
                             }
                             else
-                            {
+                            {*/
                                 if (verbose)
                                 {
                                     printf("Communication established. PICkit3 scripting firmware version is %d.%d.%d\n",
@@ -412,10 +438,10 @@ pickit_dev *usbPickitOpen(int unitIndex, char *unitID)
                                 }
 
                                 pickit_mode = NORMAL_MODE;
-                                pickit_firmware = (((int) retData[33]) << 16) | ((((int) retData[34]) << 8) & 0xff00) | (((int) retData[35]) & 0xff);
-                            }
+                            //    pickit_firmware = (((int) retData[33]) << 16) | ((((int) retData[34]) << 8) & 0xff00) | (((int) retData[35]) & 0xff);
+                            //}
                         }
-
+                        
                         return d;
 					}
 					else 

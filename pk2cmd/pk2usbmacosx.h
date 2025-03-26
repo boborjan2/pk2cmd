@@ -36,6 +36,9 @@
 
 #define REPORT_SIZE 64
 
+PickitType_t deviceType = Pickit2;	// JAKA
+PickitWriteStatus_t writeStatus = notWritten;
+
 /*
 	hidreport_open :  Open HID device for reports.
 	returns NULL if error.

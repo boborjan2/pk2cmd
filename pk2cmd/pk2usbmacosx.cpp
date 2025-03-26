@@ -256,13 +256,16 @@ static IOHIDDeviceInterface122 **find_device(SInt32 vendor, SInt32 product, int 
 	SInt32		score;
 	IOCFPlugInInterface		**pif;
 	IOHIDDeviceInterface122	**devif;
-	CFMutableDictionaryRef	dict;
-	kern_return_t	service;
-	io_iterator_t	usbIter;
+	CFMutableDictionaryRef	dict,dict3,dictp;
+	kern_return_t	service,service3,servicep;
+	io_iterator_t	usbIter,usbIter3,usbIterp;
 	io_object_t		usbDevice = 0;
 	int				index = 0;
 
 	dict = IOServiceMatching(kIOHIDDeviceKey);
+	dict3 = IOServiceMatching(kIOHIDDeviceKey);
+	dictp = IOServiceMatching(kIOHIDDeviceKey);
+/*
 	set_number_to_dictionary(dict, CFSTR(kIOHIDVendorIDKey),  vendor);
 	set_number_to_dictionary(dict, CFSTR(kIOHIDProductIDKey), product);
 	service = IOServiceGetMatchingServices(kIOMasterPortDefault, dict, &usbIter);
@@ -275,10 +278,84 @@ static IOHIDDeviceInterface122 **find_device(SInt32 vendor, SInt32 product, int 
 	while ((usbDevice = IOIteratorNext(usbIter)))
 	{
 		if(index++ == unit)
+		{
 			break;
 
 		IOObjectRelease(usbDevice);
 	}
+*/
+
+	int pickit_found=0;
+	set_number_to_dictionary(dict, CFSTR(kIOHIDVendorIDKey),  0x04d8);
+	set_number_to_dictionary(dict, CFSTR(kIOHIDProductIDKey), 0x0033);
+	service = IOServiceGetMatchingServices(kIOMasterPortDefault, dict, &usbIter);
+
+	if (service != 0)
+		return NULL;
+
+	IOIteratorReset(usbIter);
+
+	while ((usbDevice = IOIteratorNext(usbIter)))
+	{
+		if(index++ == unit)
+		{
+			pickit_found=1;
+			deviceType = Pickit2;
+			break;
+		}
+
+		IOObjectRelease(usbDevice);
+	}
+
+	if (pickit_found==0)
+	{
+		set_number_to_dictionary(dict3, CFSTR(kIOHIDVendorIDKey),  0x04d8);
+		set_number_to_dictionary(dict3, CFSTR(kIOHIDProductIDKey), 0x900a);
+		service3 = IOServiceGetMatchingServices(kIOMasterPortDefault, dict3, &usbIter3);
+	
+		if (service3 != 0)
+			return NULL;
+	
+		IOIteratorReset(usbIter3);
+	
+		while ((usbDevice = IOIteratorNext(usbIter3)))
+		{
+			if(index++ == unit)
+			{
+				pickit_found=1;
+				deviceType = Pickit3;
+				break;
+			}
+	
+			IOObjectRelease(usbDevice);
+		}
+	}
+
+
+	if(pickit_found==0)
+	{
+		set_number_to_dictionary(dictp, CFSTR(kIOHIDVendorIDKey),  0x04d8);
+		set_number_to_dictionary(dictp, CFSTR(kIOHIDProductIDKey), 0x8107);
+		servicep = IOServiceGetMatchingServices(kIOMasterPortDefault, dictp, &usbIterp);
+	
+		if (servicep != 0)
+			return NULL;	
+
+		IOIteratorReset(usbIterp);
+
+		while ((usbDevice = IOIteratorNext(usbIterp)))
+		{
+			if(index++ == unit)
+			{
+				deviceType = pkob;
+				break;
+			}
+
+			IOObjectRelease(usbDevice);
+		}
+	}
+
+
 
 	if (usbDevice)		// Get UnitID from descriptor
 		getPK2UnitID(usbDevice);
@@ -518,6 +595,25 @@ pickit_dev *usbPickitOpen(int unit, char *id)
 
 	pickit2 = hidreport_open(1240, 51, REPORT_SIZE, unit);		// 0x04d8, 0x0033 PICkit2
 
+	// 28.1.2024 Commented out implementation below doesn't allow mixing of different types of PICkit units at same time
+	// (e.g. listing of different types with -s#)
+	// deviceType recognition now implemented in find_device()
+/*	// JAKA
+	if (pickit2 == NULL) {
+		pickit2 = hidreport_open(0x04d8, 0x900a, REPORT_SIZE, unit);		// 0x04d8, 0x900a PICkit3
+		if (pickit2 != NULL)
+			deviceType = Pickit3;
+	
+		if (pickit2 == NULL) {
+			pickit2 = hidreport_open(0x04d8, 0x8107, REPORT_SIZE, unit);	// 0x04d8, 0x8017 PKOB3
+			if (pickit2 != NULL)
+				deviceType = pkob;
+		}
+	}
+	else
+		deviceType = Pickit2; 
+	// END JAKA
+*/
 	if (pickit2 != NULL)			// found it
 	{
 		if (PK2UnitIDString[0])				// if we got unit ID from descriptor,
@@ -525,6 +621,7 @@ pickit_dev *usbPickitOpen(int unit, char *id)
 		else
 			strcpy(id, "-");
 
+		// deviceType = Pickit2;
 		deviceHandle = pickit2;
 		pickit_interface = 1;
 	}
@@ -544,6 +641,7 @@ pickit_dev *usbPickitOpen(int unit, char *id)
 */
 
 	return(pickit2);
+//	return(deviceHandle);
 }
 
 void usb_release_interface(pickit_dev *deviceHandle, int pickit_interface)

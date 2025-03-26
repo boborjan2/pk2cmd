@@ -32,6 +32,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 	bool ret = true;
 	FILE *hexfile;
 	errno_t err;
+	bool firstHexComment = true;
 
 	picFuncs->ResetBuffers();
 
@@ -163,7 +164,18 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                     && (configWords > 0))
                             {
                                 int configNum = (byteAddress - ((int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigAddr)) / cfgBytesPerWord;
-                                if ((cfgBytesPerWord != bytesPerWord) && (bytePosition > 1))
+								//if (((int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgMemPanelBufs & 0xf0) == 160
+								//	|| ((int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgMemPanelBufs & 0xf0) == 176)
+								if (picFuncs->NewStyleConfigs())
+								{
+									if (configNum > 0 && configNum < 8)
+										configNum = 255;
+									else if (configNum % 2 != 0)
+										configNum = 255;
+									else if (configNum > 0)
+										configNum = (configNum - 6) / 2;
+								}
+								if ((cfgBytesPerWord != bytesPerWord) && (bytePosition > 1))
                                 { // PIC32
                                     wordByte = (wordByte >> 16) & picFuncs->DevFile.Families[picFuncs->ActiveFamily].BlankValue;
                                 }
@@ -261,8 +273,23 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                 { // end of file record
                     break;
                 }                 
-            }                  
+            }
+			else if (fileLine[0] != '\n')
+			{
+				if (firstHexComment)
+				{
+					printf("Hex file header comments:\n");
+					firstHexComment = false;
+				}
+				//if (_tcslen(fileLine) > 1)
+				//if (fileLine[0] != '\n')
+					printf("%s", fileLine);
+			}
         }
+		if (!firstHexComment)
+		{
+			printf("\n");
+		}
 	}
 	else
 	{
@@ -323,77 +350,127 @@ bool CImportExportHex::ImportBINFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 int CImportExportHex::ParseHex(_TCHAR* characters, int length)
 {
 	int integer = 0;
-	
+
 	for (int i = 0; i < length; i++)
 	{
 		integer *= 16;
-		switch(*(characters + i))
+		switch (*(characters + i))
 		{
-			case '1':
-				integer += 1;
-				break;
+		case '1':
+			integer += 1;
+			break;
 
-			case '2':
-				integer += 2;
-				break;
+		case '2':
+			integer += 2;
+			break;
 
-			case '3':
-				integer += 3;
-				break;
+		case '3':
+			integer += 3;
+			break;
 
-			case '4':
-				integer += 4;
-				break;
+		case '4':
+			integer += 4;
+			break;
 
-			case '5':
-				integer += 5;
-				break;
+		case '5':
+			integer += 5;
+			break;
 
-			case '6':
-				integer += 6;
-				break;
+		case '6':
+			integer += 6;
+			break;
 
-			case '7':
-				integer += 7;
-				break;
+		case '7':
+			integer += 7;
+			break;
 
-			case '8':
-				integer += 8;
-				break;
+		case '8':
+			integer += 8;
+			break;
 
-			case '9':
-				integer += 9;
-				break;
+		case '9':
+			integer += 9;
+			break;
 
-			case 'A':
-			case 'a':
-				integer += 10;
-				break;
+		case 'A':
+		case 'a':
+			integer += 10;
+			break;
 
-			case 'B':
-			case 'b':
-				integer += 11;
-				break;
+		case 'B':
+		case 'b':
+			integer += 11;
+			break;
 
-			case 'C':
-			case 'c':
-				integer += 12;
-				break;
+		case 'C':
+		case 'c':
+			integer += 12;
+			break;
 
-			case 'D':
-			case 'd':
-				integer += 13;
-				break;
+		case 'D':
+		case 'd':
+			integer += 13;
+			break;
 
-			case 'E':
-			case 'e':
-				integer += 14;
-				break;
+		case 'E':
+		case 'e':
+			integer += 14;
+			break;
 
-			case 'F':
-			case 'f':
-				integer += 15;
-				break;
+		case 'F':
+		case 'f':
+			integer += 15;
+			break;
+		}
+	}
+	return integer;
+}
+
+int CImportExportHex::ParseDec(_TCHAR* characters, int length)
+{
+	int integer = 0;
+
+	for (int i = 0; i < length; i++)
+	{
+		integer *= 10;
+		switch (*(characters + i))
+		{
+		case '1':
+			integer += 1;
+			break;
+
+		case '2':
+			integer += 2;
+			break;
+
+		case '3':
+			integer += 3;
+			break;
+
+		case '4':
+			integer += 4;
+			break;
+
+		case '5':
+			integer += 5;
+			break;
+
+		case '6':
+			integer += 6;
+			break;
+
+		case '7':
+			integer += 7;
+			break;
+
+		case '8':
+			integer += 8;
+			break;
+
+		case '9':
+			integer += 9;
+			break;
+
 		}
 	}
 	return integer;
@@ -586,7 +663,16 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					{
 						cfgsLeft = (16 / cfgBytesPerWord);
 					}
-					_stprintf_s(hexLine, 80, ":%02X%04X00", (cfgsLeft * cfgBytesPerWord), fileAddress);
+					int numConfBytesOnLine = cfgsLeft * cfgBytesPerWord;
+					bool lastConfByteOdd = false;
+					if (((picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgMemPanelBufs & 0x04) == 0x04)
+						&& ((configWords - cfgsWritten) <= (16 / cfgBytesPerWord)))
+					{
+						lastConfByteOdd = true;
+						numConfBytesOnLine--;     // It is last 'missing' config byte of Q83,Q84,Q71 etc.
+					}
+					//_stprintf_s(hexLine, 80, ":%02X%04X00", (cfgsLeft* cfgBytesPerWord), fileAddress);
+					_stprintf_s(hexLine, 80, ":%02X%04X00", numConfBytesOnLine, fileAddress);
 					fileAddress += (cfgsLeft * cfgBytesPerWord);
 					for (int i = 0; i < cfgsLeft; i++)
 					{          
@@ -598,9 +684,17 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                             cfgWord &= picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigBlank[cfgsWritten + i];
                         }
 						_stprintf_s(hexWord, 32, "%08X", picFuncs->DeviceBuffers->ConfigWords[cfgsWritten + i]);
-						for (int j = 0; j < cfgBytesPerWord; j++)
+						
+						if (i == (cfgsLeft - 1) && lastConfByteOdd) // Last, partial config word (only one byte) of Q71,83,84
 						{
-							_tcsncat_s(hexLine, &hexWord[8 - ((j+1)*2)], 2);
+							_tcsncat_s(hexLine, &hexWord[6], 2);
+						}
+						else        // 'Normal' write of config word
+						{
+							for (int j = 0; j < cfgBytesPerWord; j++)
+							{
+								_tcsncat_s(hexLine, &hexWord[8 - ((j + 1) * 2)], 2);
+							}
 						}
 					}
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));

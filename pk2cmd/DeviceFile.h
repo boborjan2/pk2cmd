@@ -33,7 +33,7 @@ class CDeviceFile
         unsigned short int FamilyID;             // # essentially, its array index number.
         unsigned short int FamilyType;           // also used as the display order in the Device Family Menu - lower first
         unsigned short int SearchPriority;
-        char FamilyName[24];           // 24 chars max
+        char FamilyName[25];           // extended from 24 to 25 chars by JAKA 2.7.2021. Fixes crap characters on family names whose length is 24 chars, because nul doesn't fit
         unsigned short int ProgEntryScript;
         unsigned short int ProgExitScript;
         unsigned short int ReadDevIDScript;
@@ -70,8 +70,8 @@ class CDeviceFile
         unsigned char UserIDWords;
         unsigned int UserIDAddr;             // HEX
         unsigned int BandGapMask;            // HEX
-        unsigned short int ConfigMasks[9];        // HEX always init array to size 9; note that word 9 comes from later in the device file
-        unsigned short int ConfigBlank[9];        // HEX always init array to size 9; note that word 9 comes from later in the device file
+        unsigned short int ConfigMasks[18];        // HEX always init array to size 9; note that word 9 comes from later in the device file
+        unsigned short int ConfigBlank[18];        // HEX always init array to size 9; note that word 9 comes from later in the device file
         unsigned short int CPMask;               // HEX
         unsigned char CPConfig;
         bool OSSCALSave;
@@ -158,7 +158,8 @@ class CDeviceFile
 
 	DeviceFileParams Info;
 	DeviceFamilyParams Families[32];
-	DevicePartParams PartsList[1024];
+	DevicePartParams PartsList[2048];   // Increased from 1024 to 1500 15.6.2022 because device file now has more than 1024 parts
+                                        // Further increased to 2048 7.11.2024 since was getting close to 1500 parts
 	DeviceScripts Scripts[512];
 
 };

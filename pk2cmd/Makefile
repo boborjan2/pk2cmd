@@ -16,9 +16,9 @@
 APP=pk2cmd
 CC=g++
 # Uncomment this for debugging with gdb
-DBG=-ggdb -O0 -DVERBOSE
+#DBG=-ggdb -O0
 # Uncomment this for no debugging (default)
-#DBG=-O2
+DBG=-O2
 OPTS=-Wall -D_GNU_SOURCE $(DBG)
 OBJS=cmd_app.o DeviceData.o DeviceFile.o ImportExportHex.o PICkitFunctions.o PIC32PE.o Pk2BootLoader.o pk2cmd.o stdafx.o pk2usbcommon.o pk2usb.o P24F_PE.o dsP33_PE.o strnatcmp.o
 
@@ -69,7 +69,7 @@ all: target $(APP)
 #	@echo $(HOME)
 
 $(APP): target $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
 cmd_app.o: cmd_app.cpp cmd_app.h stdafx.h
 	$(CC) $(CFLAGS) -o $@  -c $<
@@ -116,7 +116,7 @@ dsP33_PE.o: dsP33_PE.cpp dsP33_PE.h stdafx.h
 strnatcmp.o: strnatcmp.c strnatcmp.h stdafx.h
 	$(CC) $(CFLAGS) -x c -o $@  -c $<
 
-install: 
+install:
 	mkdir -p /usr/share/pk2
 	cp $(APP) /usr/local/bin
 	chmod u+s /usr/local/bin/$(APP)
@@ -148,4 +148,3 @@ target:
 ifeq ($(TARGET),)
 	$(error You must select a TARGET in Makefile or specify the target on the command line, for example: make linux)
 endif
-

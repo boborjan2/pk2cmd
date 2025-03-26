@@ -1,5 +1,9 @@
 #pragma once
+#ifndef WIN32
 #include "pk2usb.h"
+#else
+#include "usbhidioc.h"
+#endif
 #include "DeviceFile.h"
 #include "DeviceData.h"
 
@@ -19,10 +23,14 @@
 #define ADR_MASK_CFG 1
 #define ADR_BITS_CFG 2
 #define CS_PINS_CFG 3
+#define BS_BELOW_CS_CFG 4
+#define TYP_ERASE_TIME_CFG 4
+#define MAX_ERASE_TIME_CFG 5
 #define I2C_BUS 1
 #define SPI_BUS 2
 #define MICROWIRE_BUS 3
 #define UNIO_BUS 4
+#define SPI_FLASH_BUS 5
 #define ERASE_EE true
 #define WRITE_EE false
 
@@ -39,6 +47,8 @@ class CPICkitFunctions
 		  bool FamilyIsEEPROM(void);
 		  bool FamilyIsMCP(void);
 		  bool FamilyIsPIC32(void);
+		  bool NewStyleConfigs(void);
+		  bool PartHasCustomerOTP(void);
 		  bool WriteDevice(bool progmem, bool eemem, bool uidmem, bool cfgmem, bool useLowVoltageRowErase);
 		  bool HCS360_361_VppSpecial(void);
 		  void WriteConfigOutsideProgMem();
@@ -56,7 +66,8 @@ class CPICkitFunctions
 		  bool SetMCLR(bool nMCLR);
 		  bool SendScript(unsigned char script[], int length);
 		  bool ReadDevice(char function, bool progmem, bool eemem, bool uidmem, bool cfgmem);
-		  bool Download3Multiples(int downloadBytes, int multiples, int increment);
+		  // bool Download3Multiples(int downloadBytes, int multiples, int increment);
+		  bool Download3MultiplesRunScriptUploadNolen(int downloadBytes, int multiples, int increment, bool blockingReadEnabled);
 		  bool DownloadAddress3MSBFirst(int address);
 		  bool BusErrorCheck(void);
 		  bool ReadConfigOutsideProgMem(char function);
@@ -105,8 +116,10 @@ class CPICkitFunctions
 		  void SetProgrammingSpeedDefault(unsigned char speed);
 		  bool FamilyIsPIC24H(void);
 		  bool FamilyIsdsPIC33F(void);
-		  bool FamilyIsPIC24F(void);
+		  bool FamilyIsPIC24FJ(void);
 		  void SetTimerFunctions(bool usePercent, bool useNewlines);
+		  void disableBlankSkipping(void);
+		  void setI2CAddress(unsigned char address);
 		  bool SearchDevice(int familyIndex);
 		  unsigned int ReadVector(void);
 		  void WriteVector(int vtop, int vbot);
@@ -140,6 +153,7 @@ class CPICkitFunctions
 		  bool P32Write(bool progmem, bool uidmem, bool cfgmem);								//PIC32
 		  void PEProgramHeader(unsigned int startAddress, unsigned int lengthBytes); //PIC32
 		  void PEProgramSendBlock(int index, bool peResp);	//PIC32
+		  void PEProgramSendBlock2(int index, bool peResp);	//PIC32
 		  bool P32Verify(bool writeVerify, bool progmem, bool uidmem, bool cfgmem); //PIC32
 		  int p32CRC_buf(unsigned int* buffer, unsigned int startIdx, unsigned int len); //PIC32
 		  bool DownloadPE33(void); //dsP33PE
@@ -355,7 +369,12 @@ class CPICkitFunctions
               unsigned char dot; } PK3_AppVersion;
 
         bool PK3_MPLAB_Mode = false;
-        PickitType_t type() const;
+		unsigned int PK3_MagicKey = 0;
+
+		char* PicKitModelname[4] = { "PICkit2", "PICkit3", "PKOB", "PK2M" };
+
+		PickitType_t type() const;
+		PickitWriteStatus_t wrStatus() const;
 
 		struct RdErr {
 			  _TCHAR memoryType[16];
@@ -387,6 +406,8 @@ class CPICkitFunctions
 		bool printedUsingPE;
 		bool usePercentTimer;
 		bool useTimerNewlines;
+		bool skipBlankSections;
+		unsigned char I2CAddress = 0x50;
 		float timerIncrement;
 		float timerValue;
 		_TCHAR* timerOperation;

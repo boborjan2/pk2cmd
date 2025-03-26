@@ -12,6 +12,7 @@ public:
 	bool ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFuncs);
 	bool ImportBINFile(_TCHAR* filePath, CPICkitFunctions* picFuncs);
 	int ParseHex(_TCHAR* characters, int length);
+	int ParseDec(_TCHAR* characters, int length);
 	bool ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFuncs);
 	bool ExportBINFile(_TCHAR* filePath, CPICkitFunctions* picFuncs);
 	unsigned char computeChecksum(_TCHAR* fileLine);
