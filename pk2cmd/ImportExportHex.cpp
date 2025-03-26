@@ -19,6 +19,17 @@
 #include "ImportExportHex.h"
 #include "PIC32PE.h"
 
+#ifdef __linux__
+/* linux gcc produces warnings for almost concats in this file, removing it as they seem all safe */
+static char * _tcsncat_s(char *dst, const char *src, size_t len)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
+	return strncat(dst, src, len);
+#pragma GCC diagnostic pop
+}
+#endif
+
 CImportExportHex::CImportExportHex(void)
 {
 }
@@ -37,15 +48,15 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 	picFuncs->ResetBuffers();
 
 	if ((err = _tfopen_s(&hexfile, filePath, "rt")) == 0)
-	{	
+	{
         int bytesPerWord = picFuncs->DevFile.Families[picFuncs->ActiveFamily].ProgMemHexBytes;
         int eeMemBytes = picFuncs->DevFile.Families[picFuncs->ActiveFamily].EEMemHexBytes;
         unsigned int eeAddr = picFuncs->DevFile.PartsList[picFuncs->ActivePart].EEAddr;
         int progMemSizeBytes = (int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgramMem * bytesPerWord;
         int segmentAddress = 0;
-        bool configRead = false;
+//        bool configRead = false;
         bool lineExceedsFlash = true;
-        bool fileExceedsFlash = false;
+        //bool fileExceedsFlash = false;
         int userIDs = picFuncs->DevFile.PartsList[picFuncs->ActivePart].UserIDWords;
         unsigned int userIDAddr = picFuncs->DevFile.PartsList[picFuncs->ActivePart].UserIDAddr;
         if (userIDAddr == 0)
@@ -71,7 +82,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
             progMemSizeBytes += (int)programMemStart;
             cfgBytesPerWord = 2;
         }
-        unsigned int bootMemEnd = bootMemStart + (bootMemSize * (unsigned int)bytesPerWord);   
+        unsigned int bootMemEnd = bootMemStart + (bootMemSize * (unsigned int)bytesPerWord);
         int bootArrayStart = (int)(picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgramMem - bootMemSize);
 
 		_TCHAR fileLine[MAX_LINE_LEN] ="";
@@ -93,7 +104,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                 if (recordType == 0)
                 { // Data Record}
                     if ((int)_tcslen(fileLine) >= (11+ (2* byteCount)))
-                    { // skip if line isn't long enough for bytecount.                    
+                    { // skip if line isn't long enough for bytecount.
 
                         for (int lineByte = 0; lineByte < byteCount; lineByte++)
 						{
@@ -103,7 +114,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                             // compute byte position withing memory word
                             int bytePosition = byteAddress % bytesPerWord;
                             // get the byte value from hex file
-                            unsigned int wordByte = 0xFFFFFF00 | ParseHex(&fileLine[9 + (2 * lineByte)], 2); 
+                            unsigned int wordByte = 0xFFFFFF00 | ParseHex(&fileLine[9 + (2 * lineByte)], 2);
                             // shift the byte into its proper position in the word.
                             for (int shift = 0; shift < bytePosition; shift++)
 							{ // shift byte into proper position
@@ -115,7 +126,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 
                             // program memory section --------------------------------------------------
                             if ((byteAddress < progMemSizeBytes) && (byteAddress >= (int)programMemStart))
-                            { 
+                            {
                                 picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] &= wordByte; // add byte.
                                 lineExceedsFlash = false;
                                 //NOTE: program memory locations containing config words may get modified
@@ -124,14 +135,14 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 
                             // boot memory section --------------------------------------------------
                             if ((bootMemSize > 0) && (byteAddress >= (int)bootMemStart) && (byteAddress < (int)bootMemEnd))
-                            {              
+                            {
                                 arrayAddress = (int)(bootArrayStart + ((byteAddress - bootMemStart) / bytesPerWord));
                                 picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] &= wordByte; // add byte.
                                 lineExceedsFlash = false;
                                 //NOTE: program memory locations containing config words may get modified
                                 // by the config section below that applies the config masks.
-                            }  
-                            
+                            }
+
                             // EE data section ---------------------------------------------------------
                             if ((byteAddress >= (int)eeAddr) && (eeAddr > 0) && ((int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].EEMem > 0))
                             {
@@ -141,7 +152,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                     lineExceedsFlash = false;
                                     if (eeMemBytes == bytesPerWord)
                                     { // same # hex bytes per EE location as ProgMem location
-                                        picFuncs->DeviceBuffers->EEPromMemory[eeAddress] &= wordByte; // add byte.    
+                                        picFuncs->DeviceBuffers->EEPromMemory[eeAddress] &= wordByte; // add byte.
                                     }
                                     else
                                     {  // PIC18F/J
@@ -150,7 +161,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                         { // shift byte into proper position
                                             wordByte >>= 8;
                                         }
-                                        picFuncs->DeviceBuffers->EEPromMemory[eeAddress] &= wordByte; // add byte. 
+                                        picFuncs->DeviceBuffers->EEPromMemory[eeAddress] &= wordByte; // add byte.
                                     }
                                 }
                             }
@@ -182,12 +193,12 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                 if (configNum < picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigWords)
                                 {
                                     lineExceedsFlash = false;
-                                    configRead = true;
-                                    picFuncs->DeviceBuffers->ConfigWords[configNum] &= 
+                                    //configRead = true;
+                                    picFuncs->DeviceBuffers->ConfigWords[configNum] &=
                                         (wordByte & picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigMasks[configNum]);
                                     if (byteAddress < progMemSizeBytes)
                                     { // also mask off the word if in program memory.
-                                        picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] &= 
+                                        picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] &=
                                             (wordByte & picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigMasks[configNum]); // add byte.
 										if (picFuncs->DevFile.Families[picFuncs->ActiveFamily].BlankValue == 0xFFFF)
 										{// PIC18J
@@ -196,15 +207,15 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 										else
 										{// PIC24FJ is currently only other case of config in program mem
 											picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] |= (0xFF0000);
-											picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] |= 
+											picFuncs->DeviceBuffers->ProgramMemory[arrayAddress] |=
 												(picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigBlank[configNum] &
 												~ picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigMasks[configNum]);
 										}
                                     }
-                                }                                    
-                                
-                            } 
-                            
+                                }
+
+                            }
+
                             // User IDs section ---------------------------------------------------------
                             if (userIDs > 0)
                             {
@@ -216,7 +227,7 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                         lineExceedsFlash = false;
                                         if (userIDMemBytes == bytesPerWord)
                                         { // same # hex bytes per EE location as ProgMem location
-                                            picFuncs->DeviceBuffers->UserIDs[uIDAddress] &= wordByte; // add byte.    
+                                            picFuncs->DeviceBuffers->UserIDs[uIDAddress] &= wordByte; // add byte.
                                         }
                                         else
                                         {  // PIC18F/J, PIC24H/dsPIC33
@@ -225,12 +236,12 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                             { // shift byte into proper position
                                                 wordByte >>= 8;
                                             }
-                                            picFuncs->DeviceBuffers->UserIDs[uIDAddress] &= wordByte; // add byte. 
+                                            picFuncs->DeviceBuffers->UserIDs[uIDAddress] &= wordByte; // add byte.
                                         }
                                     }
                                 }
                             }
-                            // ignore data in hex file 
+                            // ignore data in hex file
                             if (picFuncs->DevFile.PartsList[picFuncs->ActivePart].IgnoreBytes > 0)
                             {
                                 if (byteAddress >= (int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].IgnoreAddress)
@@ -243,21 +254,21 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                                     }
                                 }
                             }
-                            
-                        } 
-                    } 
+
+                        }
+                    }
                     if (lineExceedsFlash)
                     {
-                        fileExceedsFlash = true;
-                    }                  
-                } // end if (recordType == 0) 
+                        //fileExceedsFlash = true;
+                    }
+                } // end if (recordType == 0)
 
                 if ((recordType == 2) || (recordType == 4))
                 { // Segment address
                     if ((int)_tcslen(fileLine) >= (11 + (2 * byteCount)))
-                    { // skip if line isn't long enough for bytecount.                                                    
+                    { // skip if line isn't long enough for bytecount.
                         segmentAddress = ParseHex(&fileLine[9], 4);
-                    } 
+                    }
                     if (recordType == 2)
                     {
                         segmentAddress <<= 4;
@@ -266,13 +277,13 @@ bool CImportExportHex::ImportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                     {
                         segmentAddress <<= 16;
                     }
-                    
-                } // end if ((recordType == 2) || (recordType == 4)) 
-                
+
+                } // end if ((recordType == 2) || (recordType == 4))
+
                 if (recordType == 1)
                 { // end of file record
                     break;
-                }                 
+                }
             }
 			else if (fileLine[0] != '\n')
 			{
@@ -488,8 +499,8 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 	_TCHAR hexWord[32] = "";
 
 	if ((err = _tfopen_s(&hexfile, filePath, "wt")) == 0)
-	{	
-    
+	{
+
 		// Start with segment zero
 		if (picFuncs->FamilyIsPIC32())
 		{
@@ -530,10 +541,10 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 				_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 				_tcsncat_s(hexLine, hexWord, 3);
 				_fputts(hexLine, hexfile);
-	            
+
 				fileAddress += 16;
 				arrayIndex += arrayIncrement;
-	            
+
 				// check for segment boundary
 				if ((fileAddress > 0xFFFF) && (arrayIndex < (int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgramMem))
 				{
@@ -542,17 +553,17 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexLine, 80, ":02000004%04X", fileSegment);
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 					_tcsncat_s(hexLine, hexWord, 3);
-					_fputts(hexLine, hexfile);                       
+					_fputts(hexLine, hexfile);
 				}
-	        
+
 			} while (arrayIndex < programEnd);
-		} 
+		}
         // Boot Memory ----------------------------------------------------------------------------
         if ((picFuncs->DevFile.PartsList[picFuncs->ActivePart].BootFlash > 0) && picFuncs->FamilyIsPIC32())
         {
 			_fputts(":020000041FC01B\n", hexfile);
             arrayIndex = programEnd;
-            programEnd = (int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgramMem;          
+            programEnd = (int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgramMem;
             fileSegment = (int)(K_P32_BOOT_FLASH_START_ADDR >> 16);
             fileAddress = (int)(K_P32_BOOT_FLASH_START_ADDR & 0xFFFF);
             if (1)
@@ -572,10 +583,10 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 					_tcsncat_s(hexLine, hexWord, 3);
 					_fputts(hexLine, hexfile);
-                    
+
                     fileAddress += 16;
                     arrayIndex += arrayIncrement;
-                    
+
                     // check for segment boundary
                     if ((fileAddress > 0xFFFF) && (arrayIndex < (int)picFuncs->DevFile.PartsList[picFuncs->ActivePart].ProgramMem))
                     {
@@ -584,12 +595,12 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexLine, 80, ":02000004%04X", fileSegment);
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 					_tcsncat_s(hexLine, hexWord, 3);
-					_fputts(hexLine, hexfile); 
-                                          
+					_fputts(hexLine, hexfile);
+
                     }
 
                 } while (arrayIndex < programEnd);
-            }   
+            }
         }
 		// EEPROM -------------------------------------------------------------------------------------
 		if (1)
@@ -604,9 +615,9 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexLine, 80, ":02000004%04X", (eeAddr >> 16));
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 					_tcsncat_s(hexLine, hexWord, 3);
-					_fputts(hexLine, hexfile); 
+					_fputts(hexLine, hexfile);
 				}
-	            
+
 				fileAddress = (int)eeAddr & 0xFFFF;
 				int eeBytesPerWord = picFuncs->DevFile.Families[picFuncs->ActiveFamily].EEMemHexBytes;
 				arrayIncrement = 16 / eeBytesPerWord;     // # array words per hex line.
@@ -627,11 +638,11 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_fputts(hexLine, hexfile);
 
 					fileAddress += 16;
-					arrayIndex += arrayIncrement;                
+					arrayIndex += arrayIncrement;
 				}while (arrayIndex < eeSize);
-	        
+
 			}
-		} 
+		}
 		// Configuration Words ------------------------------------------------------------------------
 		if (1)
 		{
@@ -650,7 +661,7 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexLine, 80, ":02000004%04X", (configAddr >> 16));
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 					_tcsncat_s(hexLine, hexWord, 3);
-					_fputts(hexLine, hexfile); 
+					_fputts(hexLine, hexfile);
 				}
 
 				fileAddress = (int)configAddr & 0xFFFF;
@@ -675,7 +686,7 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexLine, 80, ":%02X%04X00", numConfBytesOnLine, fileAddress);
 					fileAddress += (cfgsLeft * cfgBytesPerWord);
 					for (int i = 0; i < cfgsLeft; i++)
-					{          
+					{
 						// convert entire array word to hex string of 4 bytes.
                         unsigned int cfgWord = picFuncs->DeviceBuffers->ConfigWords[cfgsWritten + i];
                         if (picFuncs->FamilyIsPIC32())
@@ -684,7 +695,7 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
                             cfgWord &= picFuncs->DevFile.PartsList[picFuncs->ActivePart].ConfigBlank[cfgsWritten + i];
                         }
 						_stprintf_s(hexWord, 32, "%08X", picFuncs->DeviceBuffers->ConfigWords[cfgsWritten + i]);
-						
+
 						if (i == (cfgsLeft - 1) && lastConfByteOdd) // Last, partial config word (only one byte) of Q71,83,84
 						{
 							_tcsncat_s(hexLine, &hexWord[6], 2);
@@ -701,10 +712,10 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_tcsncat_s(hexLine, hexWord, 3);
 					_fputts(hexLine, hexfile);
 					cfgsWritten += cfgsLeft;
-			   }               
+			   }
 			}
 		}
-	    
+
 		// UserIDs ------------------------------------------------------------------------------------
 		if (1)
 		{
@@ -718,7 +729,7 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 					_stprintf_s(hexLine, 80, ":02000004%04X", (uIDAddr >> 16));
 					_stprintf_s(hexWord, 32, "%02X\n", computeChecksum(hexLine));
 					_tcsncat_s(hexLine, hexWord, 3);
-					_fputts(hexLine, hexfile); 
+					_fputts(hexLine, hexfile);
 				}
 
 				fileAddress = (int)uIDAddr & 0xFFFF;
@@ -754,7 +765,7 @@ bool CImportExportHex::ExportHexFile(_TCHAR* filePath, CPICkitFunctions* picFunc
 				} while (arrayIndex < userIDs);
 			}
 		}
-		//end of record line. 
+		//end of record line.
 		_fputts(":00000001FF\n", hexfile);
 	}
 	else
@@ -809,7 +820,7 @@ unsigned char CImportExportHex::computeChecksum(_TCHAR* fileLine)
 {
 	int byteCount = ParseHex(&fileLine[1], 2);
     if ((int)_tcslen(fileLine) >= (9 + (2* byteCount)))
-    { // skip if line isn't long enough for bytecount.             
+    { // skip if line isn't long enough for bytecount.
          int checksum = byteCount;
          for (int i = 0; i < (3 + byteCount); i++)
          {
@@ -818,6 +829,6 @@ unsigned char CImportExportHex::computeChecksum(_TCHAR* fileLine)
          checksum = 0 - checksum;
          return (unsigned char)(checksum & 0xFF);
     }
-    
-    return 0;              
+
+    return 0;
 }

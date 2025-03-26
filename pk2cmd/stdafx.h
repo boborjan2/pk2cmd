@@ -10,7 +10,7 @@
 #define	VERSION_DOT	5
 
 // #define OLDSTYLE_MSB1ST_SETADDR		// If defined, use the old version of set address scipt for MSB1st families
-									// Has limitation of 128 kB FLASH for PIC18F devices (no bigger devices 
+									// Has limitation of 128 kB FLASH for PIC18F devices (no bigger devices
 									// available currently though). Also slower, because loops address increment command.
 									// NOTE! Probably doesn't work correctly with PIC18F atm, oldstyle set address script
                                     // sets 2x address! If you really need/want to use this define, probably need to fix
@@ -40,7 +40,9 @@
 #define	_totupper	 toupper
 //#define	_tcsncpy_s	strncpy
 #define	_tcscat_s	strcat
+#ifndef __linux__
 #define	_tcsncat_s	strncat
+#endif
 #define	_tcschr		strchr
 #define	_tstof		atof
 #define	_tzset		tzset

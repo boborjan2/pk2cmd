@@ -14,7 +14,7 @@
 #define BLANK_CHECK 1
 #define VERIFY_MEM 2
 #define VERIFY_NOPRG_ENTRY 3
-#define VERIFY_MEM_SHORT 4	
+#define VERIFY_MEM_SHORT 4
 #define STATUS_VDD_ERROR 0x0010
 #define STATUS_VPP_ERROR 0x0020
 #define READ_BIT true
@@ -242,7 +242,7 @@ class CPICkitFunctions
 			 SCMD_DELAY_LONG                  = 0xE8,
 			 SCMD_DELAY_SHORT                 = 0xE7,
 			 SCMD_IF_EQ_GOTO                  = 0xE6,
-			 SCMD_IF_GT_GOTO                  = 0xE5, 
+			 SCMD_IF_GT_GOTO                  = 0xE5,
 			 SCMD_GOTO_INDEX                  = 0xE4,
 			 SCMD_EXIT_SCRIPT                 = 0xE3,
 			 SCMD_PEEK_SFR                    = 0xE2,
@@ -371,7 +371,7 @@ class CPICkitFunctions
         bool PK3_MPLAB_Mode = false;
 		unsigned int PK3_MagicKey = 0;
 
-		char* PicKitModelname[4] = { "PICkit2", "PICkit3", "PKOB", "PK2M" };
+		const char* PicKitModelname[4] = { "PICkit2", "PICkit3", "PKOB", "PK2M" };
 
 		PickitType_t type() const;
 		PickitWriteStatus_t wrStatus() const;
@@ -412,10 +412,8 @@ class CPICkitFunctions
 		float timerValue;
 		_TCHAR* timerOperation;
 		unsigned int deviceRevision;
-		
+
 		struct scriptRedirect {
             unsigned char redirectToScriptLocation;
             int deviceFileScriptNumber; } scriptRedirectTable[SCRIPT_REDIR_TABLE_LEN];
 };
-
-

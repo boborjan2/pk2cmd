@@ -149,6 +149,8 @@ int readBlock(pickit_dev *d, int len, byte *dest)
                 writeStatus = writeTimeout;
 		return 0;
 	}
+	if (verbose)
+		printf("USB read %d\n", reqLen);
 
 	if (usbdebug & USB_DEBUG_RECV)
 	{

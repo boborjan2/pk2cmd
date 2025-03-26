@@ -52,21 +52,21 @@ CPICkitFunctions::~CPICkitFunctions(void)
 
 const unsigned char CPICkitFunctions::BitReverseTable[256] =
 	{
-		0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0, 
-		0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8, 
-		0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4, 
-		0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC, 
-		0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2, 
+		0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0,
+		0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8,
+		0x04, 0x84, 0x44, 0xC4, 0x24, 0xA4, 0x64, 0xE4, 0x14, 0x94, 0x54, 0xD4, 0x34, 0xB4, 0x74, 0xF4,
+		0x0C, 0x8C, 0x4C, 0xCC, 0x2C, 0xAC, 0x6C, 0xEC, 0x1C, 0x9C, 0x5C, 0xDC, 0x3C, 0xBC, 0x7C, 0xFC,
+		0x02, 0x82, 0x42, 0xC2, 0x22, 0xA2, 0x62, 0xE2, 0x12, 0x92, 0x52, 0xD2, 0x32, 0xB2, 0x72, 0xF2,
 		0x0A, 0x8A, 0x4A, 0xCA, 0x2A, 0xAA, 0x6A, 0xEA, 0x1A, 0x9A, 0x5A, 0xDA, 0x3A, 0xBA, 0x7A, 0xFA,
-		0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6, 
+		0x06, 0x86, 0x46, 0xC6, 0x26, 0xA6, 0x66, 0xE6, 0x16, 0x96, 0x56, 0xD6, 0x36, 0xB6, 0x76, 0xF6,
 		0x0E, 0x8E, 0x4E, 0xCE, 0x2E, 0xAE, 0x6E, 0xEE, 0x1E, 0x9E, 0x5E, 0xDE, 0x3E, 0xBE, 0x7E, 0xFE,
 		0x01, 0x81, 0x41, 0xC1, 0x21, 0xA1, 0x61, 0xE1, 0x11, 0x91, 0x51, 0xD1, 0x31, 0xB1, 0x71, 0xF1,
-		0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9, 
+		0x09, 0x89, 0x49, 0xC9, 0x29, 0xA9, 0x69, 0xE9, 0x19, 0x99, 0x59, 0xD9, 0x39, 0xB9, 0x79, 0xF9,
 		0x05, 0x85, 0x45, 0xC5, 0x25, 0xA5, 0x65, 0xE5, 0x15, 0x95, 0x55, 0xD5, 0x35, 0xB5, 0x75, 0xF5,
 		0x0D, 0x8D, 0x4D, 0xCD, 0x2D, 0xAD, 0x6D, 0xED, 0x1D, 0x9D, 0x5D, 0xDD, 0x3D, 0xBD, 0x7D, 0xFD,
-		0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3, 
+		0x03, 0x83, 0x43, 0xC3, 0x23, 0xA3, 0x63, 0xE3, 0x13, 0x93, 0x53, 0xD3, 0x33, 0xB3, 0x73, 0xF3,
 		0x0B, 0x8B, 0x4B, 0xCB, 0x2B, 0xAB, 0x6B, 0xEB, 0x1B, 0x9B, 0x5B, 0xDB, 0x3B, 0xBB, 0x7B, 0xFB,
-		0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7, 
+		0x07, 0x87, 0x47, 0xC7, 0x27, 0xA7, 0x67, 0xE7, 0x17, 0x97, 0x57, 0xD7, 0x37, 0xB7, 0x77, 0xF7,
 		0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 	};
 
@@ -114,14 +114,14 @@ int CPICkitFunctions::ReadPkStatus(void)
 unsigned int CPICkitFunctions::ComputeChecksum(void)
 {
     unsigned int checksum = 0;
-    
+
     if (DevFile.Families[ActiveFamily].BlankValue < 0xFFFF)
     { // 16F and baseline parts are caculated a word at a time.
         // prog mem first
         int progMemEnd = (int)DevFile.PartsList[ActivePart].ProgramMem;
-        
+
         if (DevFile.PartsList[ActivePart].OSSCALSave)
-        { // don't include last location for devices with OSSCAL 
+        { // don't include last location for devices with OSSCAL
             progMemEnd--;
         }
 
@@ -159,8 +159,8 @@ unsigned int CPICkitFunctions::ComputeChecksum(void)
                     checksum += (unsigned int)((0xF & DeviceBuffers->UserIDs[DevFile.PartsList[ActivePart].UserIDWords - idx - 1])
                          * idPosition);
                 }
-            }                
-            
+            }
+
             // config words
             for (int idx = 0; idx < DevFile.PartsList[ActivePart].ConfigWords; idx++)
             {
@@ -176,7 +176,7 @@ unsigned int CPICkitFunctions::ComputeChecksum(void)
         {
             progMemEnd = (int)DevFile.PartsList[ActivePart].ProgramMem;
         }
-        
+
         for (int idx = 0; idx < progMemEnd; idx++)
         {
             unsigned int memWord = DeviceBuffers->ProgramMemory[idx];
@@ -185,7 +185,7 @@ unsigned int CPICkitFunctions::ComputeChecksum(void)
             {
                 memWord >>= 8;
                 checksum += (memWord & 0x000000FF);
-            }    
+            }
         }
 
         if (DevFile.PartsList[ActivePart].ConfigWords > 0)
@@ -201,7 +201,7 @@ unsigned int CPICkitFunctions::ComputeChecksum(void)
                     checksum += (memWord & 0x000000FF);
                     checksum += ((memWord >> 8) & 0x000000FF);
                 }
-            }   
+            }
 
             // config words
             for (int idx = 0; idx < DevFile.PartsList[ActivePart].ConfigWords; idx++)
@@ -215,7 +215,7 @@ unsigned int CPICkitFunctions::ComputeChecksum(void)
         }
         return (checksum & 0xFFFF);
     }
-    
+
 }
 
 unsigned int CPICkitFunctions::ReadDeviceID(void)
@@ -228,7 +228,7 @@ unsigned int CPICkitFunctions::ReadDeviceID(void)
 	UploadData();
 	RunScript(SCR_PROG_EXIT, 1);
     unsigned int deviceID = (unsigned int)(Usb_read_array[4] * 16777216 + Usb_read_array[3] * 65536 + Usb_read_array[2] * 256 + Usb_read_array[1]);
-    
+
     for (int shift = 0; shift < DevFile.Families[ActiveFamily].ProgMemShift; shift++)
     {
         deviceID >>= 1;         // midrange/baseline part results must be shifted by 1
@@ -282,7 +282,7 @@ unsigned int CPICkitFunctions::ReadDeviceID(void)
 
 
 	VddOff();
-	SetMCLR(false);   
+	SetMCLR(false);
 
 	return deviceID;
 }
@@ -302,7 +302,7 @@ bool CPICkitFunctions::FamilyIsKeeloq(void)
 
 
 bool CPICkitFunctions::FamilyIsEEPROM(void)
-{  
+{
 	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "EEPROMS", 7);
 	if (x == 0)
 		return true;
@@ -310,7 +310,7 @@ bool CPICkitFunctions::FamilyIsEEPROM(void)
 }
 
 bool CPICkitFunctions::FamilyIsMCP(void)
-{  
+{
 	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Others/MCP", 10);
 	if (x == 0)
 		return true;
@@ -318,7 +318,7 @@ bool CPICkitFunctions::FamilyIsMCP(void)
 }
 
 bool CPICkitFunctions::FamilyIsPIC32(void)
-{  
+{
 	int x = _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC32", 5);
 	if (x == 0)
 		return true;
@@ -358,7 +358,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 		P32Write(progmem, uidmem, cfgmem);
 		return true; // configs in program space
 	}
-    
+
     // compute configration information.
     int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr /
         DevFile.Families[ActiveFamily].ProgMemHexBytes;
@@ -376,7 +376,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
             DeviceBuffers->ProgramMemory[endOfBuffer - cfg] =
                         DevFile.Families[ActiveFamily].BlankValue;
         }*/
-    } 
+    }
     endOfBuffer--;
 
 	SetMCLR(true);     // assert /MCLR to prevent code execution before programming mode entered.
@@ -395,7 +395,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 				ReadOSSCAL();
 			// put OSCCAL into part memory so it doesn't have to be written seperately.
 			DeviceBuffers->ProgramMemory[DevFile.PartsList[ActivePart].ProgramMem - 1] =
-				DeviceBuffers->OSCCAL;                  
+				DeviceBuffers->OSCCAL;
 		}
 
         RunScript(SCR_PROG_ENTRY, 1);
@@ -430,8 +430,8 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
         if (FamilyIsKeeloq())
         {
             HCS360_361_VppSpecial();
-        }               
-        
+        }
+
         int wordsPerWrite = DevFile.PartsList[ActivePart].ProgMemWrWords;
         int bytesPerWord = DevFile.Families[ActiveFamily].BytesPerLocation;
         int scriptRunsToUseDownload = DOWNLOAD_BUFFER_SIZE /
@@ -457,13 +457,13 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
             scriptRunsToUseDownload = 1;
             wordsPerLoop = wordsPerWrite;
         }
-        // align end on next loop boundary                 
+        // align end on next loop boundary
         int writes = (endOfBuffer + 1) / wordsPerLoop;
         if (((endOfBuffer + 1) % wordsPerLoop) > 0)
         {
             writes++;
         }
-        endOfBuffer = writes * wordsPerLoop;    
+        endOfBuffer = writes * wordsPerLoop;
 		LastVerifyLocation = endOfBuffer;
 
 		if (useProgExec33())
@@ -501,9 +501,9 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 					if (wordsWritten == endOfBuffer)
 					{
 						break; // for cases where ProgramMemSize%WordsPerLoop != 0
-					}                             
+					}
 					unsigned int memWord = DeviceBuffers->ProgramMemory[wordsWritten++];
-					
+
                     if (memWord != DevFile.Families[ActiveFamily].BlankValue)
                     {
                         wholeChunkIsBlank = false;
@@ -513,7 +513,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 					{
 						memWord = memWord << 1;
 					}
-	                
+
                     //$$$Bequest333 and JAKA
                     if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
                         _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
@@ -524,12 +524,12 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 
 
 					downloadBuffer[downloadIndex++] = (unsigned char) (memWord & 0xFF);
-	                
+
 					for (int bite = 1; bite < bytesPerWord; bite++)
 					{
 						memWord >>= 8;
 						downloadBuffer[downloadIndex++] = (unsigned char) (memWord & 0xFF);
-					}                             
+					}
 
 				}
 				// download data
@@ -542,7 +542,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
                         {   // set PC if prevoius chunk was not written
                             DownloadAddress3((wordsWritten - wordsPerLoop) * DevFile.Families[ActiveFamily].AddressIncrement);
                             if (DevFile.Families[ActiveFamily].BlankValue == 0xFFFFFF)
-                                RunScript(SCR_PROGMEM_WR_PREP, 1);	// PIC24 (maybe others?) need to use WR_PREP when writing, and ADDRSET when reading 
+                                RunScript(SCR_PROGMEM_WR_PREP, 1);	// PIC24 (maybe others?) need to use WR_PREP when writing, and ADDRSET when reading
                             else
                                 RunScript(SCR_PROGMEM_ADDRSET, 1);	// Many PICs can use ADDRSET also when writing.
                         }
@@ -568,7 +568,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
                         RunScript(SCR_PROGMEM_WR_PREP, 1);
                     }
                 //}
-	       
+
                 previousChunkWasBlank = wholeChunkIsBlank;
 				timerPrint();
 			} while (wordsWritten < endOfBuffer);
@@ -583,7 +583,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
     {// if config in program memory, restore prog memory to proper values.
         for (int cfg = configWords; cfg > 0; cfg--)
         {
-            DeviceBuffers->ProgramMemory[DevFile.PartsList[ActivePart].ProgramMem - cfg] 
+            DeviceBuffers->ProgramMemory[DevFile.PartsList[ActivePart].ProgramMem - cfg]
                     = configBackups[cfg - 1];
         }
     } */
@@ -602,7 +602,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
             RunScript(SCR_ERASE_EE, 1);
             //RunScript(SCR_PROG_EXIT, 1);
         }
-        
+
         if (DevFile.PartsList[ActivePart].EEWrPrepScript > 1)
         {
             if (DevFile.Families[ActiveFamily].EEMemHexBytes == 4)
@@ -625,7 +625,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
         {
             locationsPerLoop = 16;
         }
-        
+
         // find end of used EE
         if (progmem && !useLowVoltageRowErase)
         { // we're writing all, so EE is erased first, we can skip blank locations at end
@@ -637,13 +637,13 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
         { // if we're only writing EE, must write blanks in case they aren't blank on device
             endOfBuffer = DevFile.PartsList[ActivePart].EEMem - 1;
         }
-        // align end on next loop boundary                 
+        // align end on next loop boundary
         int writes = (endOfBuffer + 1) / locationsPerLoop;
         if (((endOfBuffer + 1) % locationsPerLoop) > 0)
         {
             writes++;
         }
-        endOfBuffer = writes * locationsPerLoop;                                                                           
+        endOfBuffer = writes * locationsPerLoop;
 
 		int bufferSize = locationsPerLoop * bytesPerWord;
 
@@ -679,12 +679,12 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 				{
 					eeWord >>= 8;
 					downloadBuffer[downloadIndex++] = (unsigned char)(eeWord & 0xFF);
-				}  
+				}
 			}
 			// download data
 			DataClrAndDownload(downloadBuffer, bufferSize, 0);
 			RunScript(SCR_EE_WR, scriptRunsPerLoop);
-            
+
 			timerPrint();
 		} while (locationsWritten < endOfBuffer);
 		RunScript(SCR_PROG_EXIT, 1);
@@ -695,8 +695,8 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
     bool OTPAlreadyWritten = false;
     if (uidmem && (DevFile.PartsList[ActivePart].UserIDWords > 0))
     { // do not write if EE unselected as PIC18F cannot erase/write UserIDs except with ChipErase
-                     
-        
+
+
         int bytesPerID = DevFile.Families[ActiveFamily].UserIDBytes;
         int bufferSize = DevFile.PartsList[ActivePart].UserIDWords * bytesPerID;
         // unsigned char uiDownloadBuffer[DevFile.PartsList[ActivePart].UserIDWords * bytesPerID];
@@ -781,7 +781,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
                     {
                         memWord = (memWord >> 1) & DevFile.Families[ActiveFamily].BlankValue;
                     }
-                    
+
                     wordsRead++;
                     unsigned int blank = DevFile.Families[ActiveFamily].BlankValue;
                     if (bytesPerWord == 1)
@@ -800,7 +800,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
                         printf("Errors will be shown below if OTP contents differ.\n\n");
                         OTPAlreadyWritten = true;
                     }
-                
+
                     /*
                     if (function == READ_MEM)
                     {
@@ -919,7 +919,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
             {
                 RunScript(SCR_USERID_WR_PREP, 1);
             }
-            
+
             int dataIndex = 0;
             int bytesWrittenBeforeThisRound = 0;
             while (dataIndex < downloadIndex)
@@ -948,10 +948,10 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
         }
     }
 
-    
+
     // WRITE CONFIGURATION ---------------------------------------------------------------------------------------------
     if (cfgmem)
-    { // 
+    { //
         // Write Configuration
         if ((configWords > 0) && (!configInProgramSpace))
         { // Write config words differently for any part where they are stored in program memory.
@@ -961,7 +961,7 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
 				ReadBandGap();
 			}
             // 18F devices create a problem as the WRTC bit in the next to last config word
-            // is effective immediately upon being written, which if asserted prevents the 
+            // is effective immediately upon being written, which if asserted prevents the
             // last config word from being written.
             // To get around this, we're using a bit of hack.  Detect PIC18F or PIC18F_K_parts,
             // and look for WRTC = 0.  If found, write config words once with CONFIG6 = 0xFFFF
@@ -978,14 +978,14 @@ bool CPICkitFunctions::WriteDevice(bool progmem, bool eemem, bool uidmem, bool c
                         WriteConfigOutsideProgMem();
                         DeviceBuffers->ConfigWords[5] = saveConfig6;
                     }
-                
+
                 }
             }
             WriteConfigOutsideProgMem();
 
         }
-        
-    } 
+
+    }
 
 	if ((!configInProgramSpace) && progmem && (!FamilyIsKeeloq()))
 	{
@@ -1010,9 +1010,9 @@ bool CPICkitFunctions::HCS360_361_VppSpecial(void)
         commandArray[2] = SCMD_SET_ICSP_PINS; // data goes low with VPP staying low, clock high
         commandArray[3] = 0x04;
         commandArray[4] = SCMD_MCLR_GND_ON;
-        commandArray[5] = SCMD_VPP_OFF;                
+        commandArray[5] = SCMD_VPP_OFF;
         commandArray[6] = SCMD_DELAY_LONG;
-        commandArray[7] = 0x05;                
+        commandArray[7] = 0x05;
         commandArray[8] = SCMD_SET_ICSP_PINS; // data set to bit 0 word 0, clock high
         commandArray[9] = 0x04;
         commandArray[10] = SCMD_SET_ICSP_PINS; // clock low, data keeps value
@@ -1023,13 +1023,13 @@ bool CPICkitFunctions::HCS360_361_VppSpecial(void)
         commandArray[2] = SCMD_SET_ICSP_PINS; // data goes low with VPP high, clock high
         commandArray[3] = 0x04;
         commandArray[4] = SCMD_MCLR_GND_OFF;
-        commandArray[5] = SCMD_VPP_ON;                
+        commandArray[5] = SCMD_VPP_ON;
         commandArray[6] = SCMD_DELAY_LONG;
         commandArray[7] = 0x05;
         commandArray[8] = SCMD_SET_ICSP_PINS; // data set to bit 0 word 0, clock high
         commandArray[9] = 0x0C;
         commandArray[10] = SCMD_SET_ICSP_PINS; // clock low, data keeps value
-        commandArray[11] = 0x08;                
+        commandArray[11] = 0x08;
     }
     return writeUSB(commandArray, 12);
 
@@ -1054,7 +1054,7 @@ void CPICkitFunctions::WriteConfigOutsideProgMem()
 {
     int configWords = DevFile.PartsList[ActivePart].ConfigWords;
     unsigned char configBuffer[MAX_CFG * 2];
-    
+
     if (DevFile.PartsList[ActivePart].BandGapMask > 0)
     {
         DeviceBuffers->ConfigWords[0] &= ~DevFile.PartsList[ActivePart].BandGapMask;
@@ -1071,7 +1071,7 @@ void CPICkitFunctions::WriteConfigOutsideProgMem()
     {
         DownloadAddress3(0);
         RunScript(SCR_CONFIG_WR_PREP, 1);
-    }    
+    }
 
     for (int i = 0, j = 0; i < configWords; i++)
     {
@@ -1082,7 +1082,7 @@ void CPICkitFunctions::WriteConfigOutsideProgMem()
         }
         //$$$Bequest333 and JAKA
         if (_tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "Midrange/1.8V Min MSB1st", 24) == 0 ||
-            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0) 
+            _tcsncmp(DevFile.Families[ActiveFamily].FamilyName, "PIC18/PIC18F MSB1st", 19) == 0)
         {
             configWord = reverse16Bits(configWord);
             if (DevFile.PartsList[ActivePart].IgnoreBytes == 0x000C
@@ -1095,7 +1095,7 @@ void CPICkitFunctions::WriteConfigOutsideProgMem()
     }
     DataClrAndDownload(configBuffer, MAX_CFG * 2, 0);
     RunScript(SCR_CONFIG_WR, 1);
-    RunScript(SCR_PROG_EXIT, 1);        
+    RunScript(SCR_PROG_EXIT, 1);
 }
 
 int CPICkitFunctions::DataClrAndDownload(unsigned char dataArray[], int arrayLength , int startIndex)
@@ -1155,7 +1155,7 @@ int CPICkitFunctions::DataDownload(unsigned char dataArray[], int arrayLength , 
     {
         return 0;
     }
-} 
+}
 
 int CPICkitFunctions::FindLastUsedInBuffer(unsigned int bufferToSearch[], unsigned int blankValue, int startIndex)
 {   // go backwards from the start entry to find the last non-blank entry
@@ -1173,15 +1173,15 @@ int CPICkitFunctions::FindLastUsedInBuffer(unsigned int bufferToSearch[], unsign
     {
         return startIndex;
     }
-    
-    return 0;          
+
+    return 0;
 }
 
 bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltageRowErase)
 {
     unsigned int configLocation;
     int configWords;
-    int endOfBuffer;
+//    int endOfBuffer;
 	unsigned int orMask;
 	int cfg;
 
@@ -1210,15 +1210,15 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
 			ReadOSSCAL();
         // put OSCCAL into part memory so it doesn't have to be written seperately.
         DeviceBuffers->ProgramMemory[DevFile.PartsList[ActivePart].ProgramMem - 1] =
-            DeviceBuffers->OSCCAL;                  
+            DeviceBuffers->OSCCAL;
     }
-    
+
     // Get BandGap if need be
     if (DevFile.PartsList[ActivePart].BandGapMask > 0)
     {
         ReadBandGap();
     }
-    
+
     // Erase Device First
     bool reWriteEE = false;
     if (progmem && (eemem || DevFile.PartsList[ActivePart].EEMem == 0))
@@ -1277,7 +1277,7 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
                 }
                 printf("\n");
             }
-            
+
             RunScript(SCR_PROG_EXIT, 1);
         }
     }
@@ -1306,7 +1306,7 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
      // so must read & re-write EE.
         readEEPROM(READ_MEM);
         if (*useLowVoltageRowErase)
-        { // use row erases 
+        { // use row erases
             RowEraseDevice();
         }
         else
@@ -1330,12 +1330,12 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
             if (DevFile.PartsList[ActivePart].ChipErasePrepScript > 0)
             {
                 RunScript(SCR_ERASE_CHIP_PREP, 1);
-            } 
+            }
             RunScript(SCR_ERASE_CHIP, 1);
-            RunScript(SCR_PROG_EXIT, 1);   
-            reWriteEE = true;   
+            RunScript(SCR_PROG_EXIT, 1);
+            reWriteEE = true;
         }
-    } 
+    }
 
 	            // restore OSCCAL if need be
     if (DevFile.PartsList[ActivePart].OSSCALSave)
@@ -1343,12 +1343,12 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
         //DeviceBuffers->OSCCAL = oscCal;
         WriteOSSCAL();
     }
-            
+
 	BlankBuffers->OSCCAL = DeviceBuffers->OSCCAL;
 	BlankBuffers->BandGap = DeviceBuffers->BandGap;
 
 	CDeviceData* saveBuffers = DeviceBuffers;
-	DeviceBuffers = BlankBuffers;	
+	DeviceBuffers = BlankBuffers;
 	// for row erasing, call WRITE function
 	if (*useLowVoltageRowErase)
 	{
@@ -1362,7 +1362,7 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
 			//DeviceBuffers->BandGap = bandGap;
 			WriteConfigOutsideProgMem();
 		}
-            
+
         // write "erased" config words for parts that don't bulk erase configs (ex 18F6520)
 		// also for PIC18J/PIC24FJ to match MPLAB
         if (DevFile.PartsList[ActivePart].WriteCfgOnErase)
@@ -1371,7 +1371,7 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
             configLocation = DevFile.PartsList[ActivePart].ConfigAddr /
                 DevFile.Families[ActiveFamily].ProgMemHexBytes;
             configWords = DevFile.PartsList[ActivePart].ConfigWords;
-            endOfBuffer = DevFile.PartsList[ActivePart].ProgramMem;
+            //endOfBuffer = DevFile.PartsList[ActivePart].ProgramMem;
             if ((configLocation < DevFile.PartsList[ActivePart].ProgramMem) && (configWords > 0))
             {// if config in program memory, set them to clear.
                 orMask = 0;
@@ -1415,7 +1415,7 @@ bool CPICkitFunctions::EraseDevice(bool progmem, bool eemem, bool* useLowVoltage
 	DeviceBuffers = saveBuffers;
 
 	VddOff();
-	SetMCLR(false);     // deassert /MCLR 
+	SetMCLR(false);     // deassert /MCLR
 	return reWriteEE;
 }
 
@@ -1454,7 +1454,7 @@ bool CPICkitFunctions::WriteOSSCAL()
         }
     }
     return false;
-} 
+}
 
 void CPICkitFunctions::RowEraseDevice(void)
 {
@@ -1466,12 +1466,12 @@ void CPICkitFunctions::RowEraseDevice(void)
     { // if prog mem address set script exists for this part
         DownloadAddress3(0);
         RunScript(SCR_PROGMEM_WR_PREP, 1);
-    }            
+    }
 	timerStart((_TCHAR*)"Row Erase", memoryRows/256);
     do
     {
         if (memoryRows >= 256)
-        { // erase up to 256 rows at a time               
+        { // erase up to 256 rows at a time
             RunScript(SCR_ROW_ERASE, 0);  // 0 = 256 times
             memoryRows -= 256;
         }
@@ -1481,9 +1481,9 @@ void CPICkitFunctions::RowEraseDevice(void)
             memoryRows = 0;
         }
     timerPrint();
-    } while (memoryRows > 0); 
+    } while (memoryRows > 0);
     RunScript(SCR_PROG_EXIT, 1);
-    
+
     // --- Erase EEPROM Data ---
     // only dsPIC30 currently needs this done
     if (DevFile.PartsList[ActivePart].EERowEraseScript > 0)
@@ -1499,7 +1499,7 @@ void CPICkitFunctions::RowEraseDevice(void)
         do
         {
             if (eeRows >= 256)
-            { // erase up to 256 rows at a time               
+            { // erase up to 256 rows at a time
                 RunScript(SCR_EEROW_ERASE, 0);  // 0 = 256 times
                 eeRows -= 256;
             }
@@ -1510,10 +1510,10 @@ void CPICkitFunctions::RowEraseDevice(void)
             }
 
         } while (eeRows > 0);
-        RunScript(SCR_PROG_EXIT, 1);            
-    
+        RunScript(SCR_PROG_EXIT, 1);
+
     }
-    
+
     // --- Erase Config Memory  ---
     if (DevFile.PartsList[ActivePart].ConfigMemEraseScript > 0)
     {
@@ -1557,8 +1557,8 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
         extraBytes = 4;
     }
 
-    int wordsPerWrite = DevFile.PartsList[ActivePart].ProgMemWrWords;                
-    int bytesPerWord = DevFile.Families[ActiveFamily].BytesPerLocation;                
+    int wordsPerWrite = DevFile.PartsList[ActivePart].ProgMemWrWords;
+    int bytesPerWord = DevFile.Families[ActiveFamily].BytesPerLocation;
     int dataDownloadSize = DOWNLOAD_BUFFER_SIZE;
     if (endOfBuffer < dataDownloadSize)
     {
@@ -1576,9 +1576,9 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
 
 	LastVerifyLocation = endOfBuffer;
 
-    if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
+    if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS) {
         printf("Using I2C address 0x%02x\n", I2CAddress);
-
+    }
 	timerStart((_TCHAR*)"Write EEPROM", endOfBuffer / wordsPerLoop);
 
     unsigned char downloadBuffer[DOWNLOAD_BUFFER_SIZE];
@@ -1589,7 +1589,7 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
     }
 
     bool wholeChunkIsBlank = true;
-    bool previousChunkWasBlank = true;
+    //bool previousChunkWasBlank = true;
 
     do
     {
@@ -1615,7 +1615,7 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
                 }
                 downloadBuffer[downloadIndex++] = (unsigned char)((eeAddress >> 16) & 0xFF); // upper byte
                 downloadBuffer[downloadIndex++] = (unsigned char)((eeAddress >> 8) & 0xFF); // high byte
-                downloadBuffer[downloadIndex++] = (unsigned char)(eeAddress & 0xFF); // low byte  
+                downloadBuffer[downloadIndex++] = (unsigned char)(eeAddress & 0xFF); // low byte
             }
 
             unsigned int memWord = DeviceBuffers->ProgramMemory[wordsWritten++];
@@ -1632,7 +1632,7 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
                 memWord >>= 8;
                 downloadBuffer[downloadIndex++] = (unsigned char)(memWord & 0xFF);
             }
-            
+
             if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == MICROWIRE_BUS)
                  && (bytesPerWord == 2))
             { // "Endian-ness" of Microwire 16-bit words need to be swapped
@@ -1654,7 +1654,7 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
             {
                 dataIndex = DataDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, dataIndex);
             }
-        
+
             RunScript(SCR_PROGMEM_WR, scriptRunsToUseDownload);
 
             if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
@@ -1682,7 +1682,7 @@ bool CPICkitFunctions::EepromWrite(bool eraseWrite)
                 }
             }
         }
-        previousChunkWasBlank = wholeChunkIsBlank;
+        //previousChunkWasBlank = wholeChunkIsBlank;
         timerPrint();
     } while (wordsWritten < endOfBuffer);
 
@@ -1805,7 +1805,7 @@ bool CPICkitFunctions::SetMCLR(bool nMCLR)
 	{
 		scriptArray[0] = SCMD_MCLR_GND_OFF;
 	}
-	return SendScript(scriptArray, 1);             
+	return SendScript(scriptArray, 1);
 }
 
 bool CPICkitFunctions::SendScript(unsigned char script[], int length)
@@ -1819,7 +1819,7 @@ bool CPICkitFunctions::SendScript(unsigned char script[], int length)
         commandArray[2 + n] = script[n];
     }
     return writeUSB(commandArray, 2 + length);
-}  
+}
 
 bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool uidmem, bool cfgmem)
 {
@@ -1827,7 +1827,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 	{
 		LastVerifyLocation = (int)DevFile.PartsList[ActivePart].ProgramMem;
 	}
-	// ELSE it should be set in WriteDevice 
+	// ELSE it should be set in WriteDevice
 
 	if (FamilyIsPIC32())
 	{
@@ -1847,7 +1847,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 		}
 		else // other verify
 		{
-			ret = P32Verify(false, progmem, uidmem, cfgmem);	
+			ret = P32Verify(false, progmem, uidmem, cfgmem);
 		}
 		return ret;
 	}
@@ -1855,13 +1855,13 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 	if (function == BLANK_CHECK)
 	{
 		ResetBuffers();
-		int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr / 
+		int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr /
 			DevFile.Families[ActiveFamily].ProgMemHexBytes;
 		int configWords = DevFile.PartsList[ActivePart].ConfigWords;
 		if ((configWords > 0) && (configLocation < (int)DevFile.PartsList[ActivePart].ProgramMem))
 		{
 			// put config word blank values in program memory array
-            
+
             //if ((DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 160
             //    || (DevFile.PartsList[ActivePart].ProgMemPanelBufs & 0xf0) == 176)
             if (NewStyleConfigs())
@@ -2031,7 +2031,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 						return false;
 					}
 				}
-				else 
+				else
 				{
 					DownloadAddress3(0);
 					RunScript(SCR_PROGMEM_ADDRSET, 1);
@@ -2092,11 +2092,11 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
                     || function == BLANK_CHECK
                     || FamilyIsMCP())     // JAKA - Verify data only if it's not completely blank
                 {
-                    
+
                     ////////////////////////////////////////////
                     // Set I2C address if crossed bank border //
                     ////////////////////////////////////////////
-                    bool i2cAdrAlreadyWritten = false;
+                    //bool i2cAdrAlreadyWritten = false;
                     if (FamilyIsEEPROM())
                     {
                         if ((DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
@@ -2105,7 +2105,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
                         { // must resend address to EE every time we cross a bank border.
                             DownloadAddress3MSBFirst(eeprom24BitAddress(wordsRead, WRITE_BIT));
                             RunScript(SCR_PROGMEM_ADDRSET, 1);
-                            i2cAdrAlreadyWritten = true;
+                            //i2cAdrAlreadyWritten = true;
                         }
                         //Download3Multiples(eeprom24BitAddress(wordsRead, READ_BIT), scriptRunsToFillUpload,
                         //    DevFile.PartsList[ActivePart].ProgMemRdWords);
@@ -2126,7 +2126,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
                             if (FamilyIsEEPROM())
                             {   // set EEPROM address if previous chunk was not verified
                                 if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
-                                { 
+                                {
                                     DownloadAddress3MSBFirst(eeprom24BitAddress(wordsRead, WRITE_BIT));
                                     RunScript(SCR_PROGMEM_ADDRSET, 1);
                                 }
@@ -2157,16 +2157,16 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
                         //else
                             RunScriptUploadNoLen(SCR_PROGMEM_RD, scriptRunsToFillUpload);
                     }
-                                        
+
                     ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
-				    
+
                     //if (blockingReadEnabled)
                     //    GetUpload();
                     //else
                         UploadDataNoLen();
 
 				    ArrayCopy(Usb_read_array, 0, upload_buffer, MAX_BYTES, MAX_BYTES);
-				    int uploadIndex = 0;                                 
+				    int uploadIndex = 0;
 				    for (int word = 0; word < wordsPerLoop; word++)
 				    {
 					    int bite = 0;
@@ -2208,7 +2208,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 					    }
 					    if (function == READ_MEM)
 					    {
-						    DeviceBuffers->ProgramMemory[wordsRead++] = memWord;	
+						    DeviceBuffers->ProgramMemory[wordsRead++] = memWord;
 					    }
 					    else
 					    { // BLANK_CHECK or VERIFY_MEM
@@ -2224,7 +2224,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
                                         DeviceBuffers->ProgramMemory[wordsRead] |= 0xff0000;
                                     }
                                 }
-                            
+
                             }
                             */
                             if (DeviceBuffers->ProgramMemory[wordsRead++] != memWord)
@@ -2255,7 +2255,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 						    DownloadAddress3(0x10000 * (wordsRead / 0x8000));
 						    RunScript(SCR_PROGMEM_ADDRSET, 1);
 						    break;
-					    } 
+					    }
 				    }
                 }
                 else
@@ -2270,7 +2270,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 			RunScript(SCR_PROG_EXIT, 1);
 			timerStop();
 		}
-    } 
+    }
 
     // Read EEPROM -----------------------------------------------------------------------------------------------------
     if ((eemem)  && (DevFile.PartsList[ActivePart].EEMem > 0))
@@ -2281,14 +2281,14 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 
     // Read UserIDs ----------------------------------------------------------------------------------------------------
     if ((DevFile.PartsList[ActivePart].UserIDWords > 0) && (uidmem))
-    {                  
+    {
         RunScript(SCR_PROG_ENTRY, 1);
         if (DevFile.PartsList[ActivePart].UserIDRdPrepScript > 0)
         {
             RunScript(SCR_USERID_RD_PREP, 1);
         }
         int bytesPerWord = DevFile.Families[ActiveFamily].UserIDBytes;
-        int wordsRead = 0;   
+        int wordsRead = 0;
         int bufferIndex = 0;
         RunScriptUploadNoLen(SCR_USERID_RD, 1);
         ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
@@ -2300,7 +2300,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
         do
         {
             //if (bufferIndex >= 64)      // Should MAX_BYTES be used here(?)
-            if (bufferIndex >= (32 * bytesPerWord)) 
+            if (bufferIndex >= (32 * bytesPerWord))
             {
                 RunScriptUploadNoLen(SCR_USERID_RD, 1);
                 ArrayCopy(Usb_read_array, 0, upload_buffer, 0, MAX_BYTES);
@@ -2326,7 +2326,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
             {
                 memWord |= (unsigned int)upload_buffer[bufferIndex + bite++] << 24;
             }
-            bufferIndex += bite;                    
+            bufferIndex += bite;
             //$$$Bequest333 and JAKA
             //if (DevFile.Families[ActiveFamily].FamilyName == "Midrange/1.8V Min MSB1st" ||
             //    DevFile.Families[ActiveFamily].FamilyName == "PIC18/PIC18F MSB1st")
@@ -2396,31 +2396,31 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
     }
 
     // Read Configuration ------------------------------------------------------------------------------------------------
-    int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr / 
+    int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr /
         DevFile.Families[ActiveFamily].ProgMemHexBytes;
     int configWords = DevFile.PartsList[ActivePart].ConfigWords;
     if ((configWords > 0) && (configLocation >= (int)DevFile.PartsList[ActivePart].ProgramMem)
                 && (cfgmem))
-    { // Don't read config words for any part where they are stored in program memory.     
+    { // Don't read config words for any part where they are stored in program memory.
         if (!ReadConfigOutsideProgMem(function))
 			return false;
-        
+
         // save bandgap if necessary
         if (DevFile.PartsList[ActivePart].BandGapMask > 0)
         {
             DeviceBuffers->BandGap = DeviceBuffers->ConfigWords[0] &
                     DevFile.PartsList[ActivePart].BandGapMask;
         }
-        
+
     }
     else if ((configWords > 0) && (cfgmem))
     { // pull them out of program memory.
         for (int word = 0; word < configWords; word++)
         {
-            DeviceBuffers->ConfigWords[word] = DeviceBuffers->ProgramMemory[configLocation + word];    
+            DeviceBuffers->ConfigWords[word] = DeviceBuffers->ProgramMemory[configLocation + word];
         }
     }
-    
+
     // Read OSCCAL if exists
     /*if (Pk2.DevFile.PartsList[Pk2.ActivePart].OSSCALSave)
     {
@@ -2434,7 +2434,7 @@ bool CPICkitFunctions::ReadDevice(char function, bool progmem, bool eemem, bool 
 
 bool CPICkitFunctions::readEEPROM(char function)
 {
-    unsigned char upload_buffer[UPLOAD_BUFFER_SIZE];     
+    unsigned char upload_buffer[UPLOAD_BUFFER_SIZE];
 	bool ret = true;
 
     RunScript(SCR_PROG_ENTRY, 1);
@@ -2502,7 +2502,7 @@ bool CPICkitFunctions::readEEPROM(char function)
 
 			if (function == READ_MEM)
 			{
-				 DeviceBuffers->EEPromMemory[wordsRead++] = memWord;	
+				 DeviceBuffers->EEPromMemory[wordsRead++] = memWord;
 			}
 			else
 			{ // BLANK_CHECK or VERIFY_MEM
@@ -2537,19 +2537,19 @@ bool CPICkitFunctions::readEEPROM(char function)
 bool CPICkitFunctions::Download3Multiples(int downloadBytes, int multiples, int increment)
 {
     unsigned char firstCommand = FWCMD_CLR_DOWNLOAD_BUFFER;
-    
+
     do
     {
         int thisWrite = multiples;
         if (multiples > 20) // can only write 20 per USB packet. (20 * 3 = 60 bytes)
         {
             thisWrite = 20;
-            multiples -= 20;   
-        }    
+            multiples -= 20;
+        }
         else
         {
             multiples = 0;
-        }    
+        }
 		unsigned char commandArray[BUF_SIZE];
         commandArray[0] = firstCommand;
         commandArray[1] = FWCMD_DOWNLOAD_DATA;
@@ -2559,7 +2559,7 @@ bool CPICkitFunctions::Download3Multiples(int downloadBytes, int multiples, int 
             commandArray[3 + (3 * i)] = (unsigned char)(downloadBytes >> 16);
             commandArray[4 + (3 * i)] = (unsigned char)(downloadBytes >> 8);
             commandArray[5 + (3 * i)] = (unsigned char)downloadBytes;
-            
+
             downloadBytes += increment;
         }
 
@@ -2567,10 +2567,10 @@ bool CPICkitFunctions::Download3Multiples(int downloadBytes, int multiples, int 
         {
             return false;
         }
-        
+
         firstCommand = FWCMD_NO_OPERATION;
     } while (multiples > 0);
-    
+
     return true;
 }
 */
@@ -2650,29 +2650,29 @@ bool CPICkitFunctions::DownloadAddress3MSBFirst(int address)
     commandArray[3] = (unsigned char )(0xFF & (address >> 16));
     commandArray[4] = (unsigned char )(0xFF & (address >> 8));
     commandArray[5] = (unsigned char )(address & 0xFF);
-    
+
     return writeUSB(commandArray, 6);
 }
 
 int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
 {
     if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == I2C_BUS)
-    {      
+    {
         int tempAddress = wordsWritten;
         int address = 0;
         int chipSelects = DevFile.PartsList[ActivePart].ConfigMasks[CS_PINS_CFG];
-        
+
         // I2C
         // Low & mid bytes
         address = wordsWritten & DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG] & 0xFFFF;
-        
+
         // block address
         tempAddress >>= (DevFile.PartsList[ActivePart].ConfigMasks[ADR_BITS_CFG]);
         if (DevFile.PartsList[ActivePart].ConfigMasks[BS_BELOW_CS_CFG] == 0)
             tempAddress <<= 17 + chipSelects; // 2 words plus R/W bit
         else
             tempAddress <<= 17; // 2 words plus R/W bit
-        
+
         /*if (chipSelects > 0)   // always set to '0' in pk2cmd
         {
             if (checkBoxA0CS.Checked)
@@ -2687,23 +2687,23 @@ int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
             {
                 tempAddress |= 0x00080000;
             }
-        }*/ 
-        
+        }*/
+
         //address += (tempAddress & 0x000E0000) + 0x00A00000;
         address += (tempAddress & 0x000E0000) | (I2CAddress << 17);     // Doesn't check if block address bits collide with I2C address. User's responsibility!
         if (setReadBit)
         {
             address |= 0x00010000;
         }
-        
+
         return address;
     }
-    else if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_BUS  
+    else if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_BUS
              || DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS)
     {
         int tempAddress = wordsWritten;
         int address = 0;
-        
+
         //SPI
         // Low & Mid bytes
         if (DevFile.PartsList[ActivePart].ProgramMem <= 0x10000)
@@ -2737,7 +2737,7 @@ int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
             tempAddress = 0x06; // start bit and read opcode
         }
         tempAddress <<= (DevFile.PartsList[ActivePart].ConfigMasks[ADR_BITS_CFG]);
-        
+
         address |= tempAddress;
 
         return address;
@@ -2745,9 +2745,9 @@ int CPICkitFunctions::eeprom24BitAddress(int wordsWritten, bool setReadBit)
     else if (DevFile.PartsList[ActivePart].ConfigMasks[PROTOCOL_CFG] == UNIO_BUS)
     {
         int address = 0;
-        
+
         address = wordsWritten & DevFile.PartsList[ActivePart].ConfigMasks[ADR_MASK_CFG] & 0xFFFF;
-        
+
         if (setReadBit)
         {
             address |= 0x030000; // READ command
@@ -2765,7 +2765,7 @@ bool CPICkitFunctions::BusErrorCheck(void)
 {
     int status = ReadPkStatus();
     if ((status & 0x0400) == 0x0400)
-    {          
+    {
         return true; //error
     }
 
@@ -2773,10 +2773,10 @@ bool CPICkitFunctions::BusErrorCheck(void)
     commandArray[0] = FWCMD_EXECUTE_SCRIPT;
     commandArray[1] = 1;
     commandArray[2] = SCMD_BUSY_LED_ON;
-    writeUSB(commandArray, 3);  
-    
+    writeUSB(commandArray, 3);
+
     return false; // no error
-}  
+}
 
 void CPICkitFunctions::DelaySeconds(unsigned int seconds)
 {
@@ -2843,7 +2843,7 @@ bool CPICkitFunctions::ReadConfigOutsideProgMem(char function)
 
 		if (function == READ_MEM)
 		{
-			DeviceBuffers->ConfigWords[word] = config;	
+			DeviceBuffers->ConfigWords[word] = config;
 		}
 		else
 		{ // BLANK_CHECK or VERIFY_MEM
@@ -2890,14 +2890,14 @@ bool CPICkitFunctions::ReadConfigOutsideProgMem(char function)
                 return false;
 			}
 		}
-    }  
+    }
 
 	return ret;
 }
 
 void CPICkitFunctions::timerStart(_TCHAR* operation, int steps)
 {
-    if (usePercentTimer) 
+    if (usePercentTimer)
     {
         timerOperation = operation;
         timerValue = 0;
@@ -2908,7 +2908,7 @@ void CPICkitFunctions::timerStart(_TCHAR* operation, int steps)
         	printf("  0%%\n");
 	}
 	else
-		printf("  0%% %s", timerOperation); 
+		printf("  0%% %s", timerOperation);
         timerIncrement = (float)100 / (float)steps;
     }
     else
@@ -2918,7 +2918,7 @@ void CPICkitFunctions::timerStart(_TCHAR* operation, int steps)
     fflush(stdout);
 }
 
-void CPICkitFunctions::timerPrint(void)    
+void CPICkitFunctions::timerPrint(void)
 {
 	static char timer = '\\';
 	static char count = 0;
@@ -2987,7 +2987,7 @@ void CPICkitFunctions::timerStop(void)
 	fflush(stdout);
 }
 
-void CPICkitFunctions::ArrayCopy(unsigned char* source, int sourceStart, unsigned char* dest, int destStart, int length)    
+void CPICkitFunctions::ArrayCopy(unsigned char* source, int sourceStart, unsigned char* dest, int destStart, int length)
 {
 	for (int i = 0; i < length; i++)
 	{
@@ -2995,7 +2995,7 @@ void CPICkitFunctions::ArrayCopy(unsigned char* source, int sourceStart, unsigne
 	}
 }
 
-bool CPICkitFunctions::DownloadAddress3(int address)    
+bool CPICkitFunctions::DownloadAddress3(int address)
 {
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_CLR_DOWNLOAD_BUFFER;
@@ -3039,9 +3039,9 @@ bool CPICkitFunctions::RunScript(int script, int repetitions)
     }
     else
     {
-        return false;   
+        return false;
     }
-} 
+}
 
 bool CPICkitFunctions::RunScriptUploadNoLen(int script, int repetitions)
 {
@@ -3110,7 +3110,7 @@ bool CPICkitFunctions::UploadDataNoLen(void)
 bool CPICkitFunctions::GetUpload(void)
 {
     return readUSB();
-}  
+}
 
 bool CPICkitFunctions::VddOn(void)
 {
@@ -3123,7 +3123,7 @@ bool CPICkitFunctions::VddOn(void)
 	else
 		commandArray[3] = SCMD_VDD_ON;
     bool result = writeUSB(commandArray, 4);
-    return result;    
+    return result;
 }
 
 bool CPICkitFunctions::VddOff(void)
@@ -3211,7 +3211,7 @@ bool CPICkitFunctions::SetVppVoltage(float voltage, float threshold)
     }
     return false;
 }
-        
+
 void CPICkitFunctions::ResetBuffers(void)
 {
     DeviceBuffers->ClearAllData(DevFile.PartsList[ActivePart].ProgramMem,
@@ -3223,7 +3223,7 @@ void CPICkitFunctions::ResetBuffers(void)
                                DevFile.Families[ActiveFamily].UserIDBytes,
                                DevFile.PartsList[ActivePart].ConfigBlank,
                                DevFile.PartsList[ActivePart].ConfigMasks[OSCCAL_MASK]);
-}   
+}
 
 float CPICkitFunctions::GetDefaultVdd(void)
 { // reads default VDD for active part from device file int vddSetPoint
@@ -3241,32 +3241,32 @@ float CPICkitFunctions::GetDefaultVpp(void)
 }
 
 void CPICkitFunctions::SetVddSetPoint(float setPoint)
-{ 
+{
 	vddSetPoint = setPoint;
 }
 
 void CPICkitFunctions::SetVppSetPoint(float setPoint)
-{ 
+{
 	vppSetPoint = setPoint;
 }
 
 void CPICkitFunctions::SetVppFirstEnable(bool set)
-{ 
+{
 	vppFirstEnabled = set;
 }
 
 bool CPICkitFunctions::GetVppFirstEnable(void)
-{ 
+{
 	return vppFirstEnabled;
 }
 
 void CPICkitFunctions::SetSelfPowered(bool set)
-{ 
+{
 	targetSelfPowered = set;
 }
 
 bool CPICkitFunctions::GetSelfPowered(void)
-{ 
+{
 	return targetSelfPowered;
 }
 
@@ -3300,7 +3300,7 @@ bool CPICkitFunctions::DetectPICkit2Device(int unitNumber, bool readFWVer)
 	bool result = false;
 	unsigned char  commandArray[BUF_SIZE];
     unsigned char  Usb_read_array[BUF_SIZE];
-	
+
 	// is there a device with this index?
 	if (!m_Driver.FindTheHID(unitNumber))
 	{ // no
@@ -3340,7 +3340,7 @@ bool CPICkitFunctions::DetectPICkit2Device(int unitNumber, bool readFWVer)
         }
     }
     else if (m_Driver.type() == Pickit3 || m_Driver.type() == pkob)
-    {        
+    {
 	memset(commandArray, 0xAD, 64);
         commandArray[0] = FWCMD_GETVERSIONS_MPLAB;
         commandArray[1] = 0;
@@ -3405,7 +3405,7 @@ void CPICkitFunctions::KillSpace(_TCHAR* name, int maxlength)
 }
 
 bool CPICkitFunctions::FindDevice(_TCHAR* device)
-{ 
+{
 	int i, x;
 	bool result = false;
 	for (i = 0; i < DevFile.Info.NumberParts; i++)
@@ -3421,7 +3421,7 @@ bool CPICkitFunctions::FindDevice(_TCHAR* device)
 			break;
 		}
 	}
-    
+
     // printf("Part is %s\n\r", DevFile.PartsList[i].PartName);
 
     if (DevFile.PartsList[i].ProgramMem > MAX_MEM)  // Allocate more memory for ProgramMem buffer only if default size is not enough
@@ -3429,7 +3429,7 @@ bool CPICkitFunctions::FindDevice(_TCHAR* device)
         DeviceBuffers->ResizeProgramMemory(DevFile.PartsList[i].ProgramMem);
         BlankBuffers->ResizeProgramMemory(DevFile.PartsList[i].ProgramMem);
     }
-    
+
     DeviceBuffers = &BlnkBuffs;
 	ResetBuffers();
 	DeviceBuffers = &DevBuffs;
@@ -3693,7 +3693,7 @@ void CPICkitFunctions::downloadPartScripts(int familyIndex)
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_CLR_SCRIPT_BUFFER;      // clear script buffer- we're loading new scripts
     writeUSB(commandArray, 1);
-    
+
     // clear the script redirect table
     for (int i = 0; i < SCRIPT_REDIR_TABLE_LEN; i++)
     {
@@ -3732,7 +3732,7 @@ void CPICkitFunctions::downloadPartScripts(int familyIndex)
     if (DevFile.PartsList[ActivePart].ChipErasePrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_ERASE_CHIP_PREP, DevFile.PartsList[ActivePart].ChipErasePrepScript);
-    }            
+    }
     // set program memory address
     if (DevFile.PartsList[ActivePart].ProgMemAddrSetScript != 0) // don't download non-existant scripts
     {
@@ -3743,93 +3743,93 @@ void CPICkitFunctions::downloadPartScripts(int familyIndex)
     {
         downloadScript(SCR_PROGMEM_WR_PREP, DevFile.PartsList[ActivePart].ProgMemWrPrepScript);
     }
-    // program memory write                 
+    // program memory write
     if (DevFile.PartsList[ActivePart].ProgMemWrScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_PROGMEM_WR, DevFile.PartsList[ActivePart].ProgMemWrScript);
     }
-    // prep for ee read               
+    // prep for ee read
     if (DevFile.PartsList[ActivePart].EERdPrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_EE_RD_PREP, DevFile.PartsList[ActivePart].EERdPrepScript);
     }
-    // ee read               
+    // ee read
     if (DevFile.PartsList[ActivePart].EERdScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_EE_RD, DevFile.PartsList[ActivePart].EERdScript);
     }
-    // prep for ee write               
+    // prep for ee write
     if (DevFile.PartsList[ActivePart].EEWrPrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_EE_WR_PREP, DevFile.PartsList[ActivePart].EEWrPrepScript);
     }
-    // ee write               
+    // ee write
     if (DevFile.PartsList[ActivePart].EEWrScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_EE_WR, DevFile.PartsList[ActivePart].EEWrScript);
     }
-    // prep for config read       
+    // prep for config read
     if (DevFile.PartsList[ActivePart].ConfigRdPrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_CONFIG_RD_PREP, DevFile.PartsList[ActivePart].ConfigRdPrepScript);
     }
-    // config read       
+    // config read
     if (DevFile.PartsList[ActivePart].ConfigRdScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_CONFIG_RD, DevFile.PartsList[ActivePart].ConfigRdScript);
     }
-    // prep for config write       
+    // prep for config write
     if (DevFile.PartsList[ActivePart].ConfigWrPrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_CONFIG_WR_PREP, DevFile.PartsList[ActivePart].ConfigWrPrepScript);
     }
-    // config write       
+    // config write
     if (DevFile.PartsList[ActivePart].ConfigWrScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_CONFIG_WR, DevFile.PartsList[ActivePart].ConfigWrScript);
     }
-    // prep for user id read      
+    // prep for user id read
     if (DevFile.PartsList[ActivePart].UserIDRdPrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_USERID_RD_PREP, DevFile.PartsList[ActivePart].UserIDRdPrepScript);
     }
-    // user id read      
+    // user id read
     if (DevFile.PartsList[ActivePart].UserIDRdScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_USERID_RD, DevFile.PartsList[ActivePart].UserIDRdScript);
     }
 
-    // prep for user id write      
+    // prep for user id write
     if (DevFile.PartsList[ActivePart].UserIDWrPrepScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_USERID_WR_PREP, DevFile.PartsList[ActivePart].UserIDWrPrepScript);
     }
-    // user id write      
+    // user id write
     if (DevFile.PartsList[ActivePart].UserIDWrScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_USERID_WR, DevFile.PartsList[ActivePart].UserIDWrScript);
     }
-    // read osscal      
+    // read osscal
     if (DevFile.PartsList[ActivePart].OSCCALRdScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_OSSCAL_RD, DevFile.PartsList[ActivePart].OSCCALRdScript);
     }
-    // write osscal      
+    // write osscal
     if (DevFile.PartsList[ActivePart].OSCCALWrScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_OSSCAL_WR, DevFile.PartsList[ActivePart].OSCCALWrScript);
     }
-    // chip erase      
+    // chip erase
     if (DevFile.PartsList[ActivePart].ChipEraseScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_ERASE_CHIP, DevFile.PartsList[ActivePart].ChipEraseScript);
     }
-    // program memory erase 
+    // program memory erase
     if (DevFile.PartsList[ActivePart].ProgMemEraseScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_ERASE_PROGMEM, DevFile.PartsList[ActivePart].ProgMemEraseScript);
     }
-    // ee erase 
+    // ee erase
     if (DevFile.PartsList[ActivePart].EEMemEraseScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_ERASE_EE, DevFile.PartsList[ActivePart].EEMemEraseScript);
@@ -3848,8 +3848,8 @@ void CPICkitFunctions::downloadPartScripts(int familyIndex)
     if (DevFile.PartsList[ActivePart].EERowEraseScript != 0) // don't download non-existant scripts
     {
         downloadScript(SCR_EEROW_ERASE, DevFile.PartsList[ActivePart].EERowEraseScript);
-    }            
-    
+    }
+
     // get script buffer checksum
     scriptBufferChecksum = getScriptBufferChecksum();
 }
@@ -3866,16 +3866,16 @@ unsigned int CPICkitFunctions::getScriptBufferChecksum(void)
             checksum += (unsigned int)(Usb_read_array[3] << 8);
             checksum += (unsigned int)(Usb_read_array[2] << 16);
             checksum += (unsigned int)(Usb_read_array[1] << 24);
-            
+
             return checksum;
         }
         return 0;
     }
-    return 0;        
+    return 0;
 }
 
 bool CPICkitFunctions::downloadScript(unsigned char scriptBufferLocation, int scriptArrayIndex)
-{        
+{
 	unsigned char commandArray[BUF_SIZE];
 	int	cmdOffset;
     // see if we've already downloaded the script.  Some devices use the same script
@@ -3952,7 +3952,7 @@ bool CPICkitFunctions::EnterBootloader(void)
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_ENTER_BOOTLOADER;
     return writeUSB(commandArray, 1);
-} 
+}
 
 bool CPICkitFunctions::VerifyBootloaderMode(void)
 {
@@ -4001,7 +4001,7 @@ bool CPICkitFunctions::BL_WriteFlash(unsigned char payload[])
     return writeUSB(commandArray, 2+35);
 
 }
-        
+
 bool CPICkitFunctions::BL_WriteFWLoadedKey(void)
 {
     // 3 address bytes plus 32 data bytes.
@@ -4075,7 +4075,7 @@ bool CPICkitFunctions::UnitIDWrite(_TCHAR* unitID)
             commandArray[4 + i] = 0;
         }
     }
-    
+
     return writeUSB(commandArray, (4+16));
 
 }
@@ -4087,7 +4087,7 @@ bool CPICkitFunctions::UnitIDRead(_TCHAR* unitID)
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_RD_INTERNAL_EE;
     commandArray[1] = EE_UNIT_ID;
-    commandArray[2] = 16; 
+    commandArray[2] = 16;
     if (writeUSB(commandArray, 3))
     {
         if (readUSB())
@@ -4104,11 +4104,11 @@ bool CPICkitFunctions::UnitIDRead(_TCHAR* unitID)
                 }
 				return true;
             }
-        
+
         }
     }
 
-    return false;        
+    return false;
 }
 
 _TCHAR* CPICkitFunctions::GetUnitID(void)
@@ -4145,7 +4145,7 @@ void CPICkitFunctions::writeConfigInsideProgramMem(void)
     //    / DevFile.PartsList[ActivePart].ProgMemWrWords + 1;
     // lastBlock = DevFile.PartsList[ActivePart].ProgramMem -
     //    DevFile.PartsList[ActivePart].ProgMemWrWords * scriptRunsToWrCfgs;
-    
+
     int wordsPerWrite = DevFile.PartsList[ActivePart].ProgMemWrWords;
     int configLocation = (int)DevFile.PartsList[ActivePart].ConfigAddr /
         DevFile.Families[ActiveFamily].ProgMemHexBytes;
@@ -4172,7 +4172,7 @@ void CPICkitFunctions::writeConfigInsideProgramMem(void)
     }
     unsigned char downloadBuffer[DOWNLOAD_BUFFER_SIZE];
     //int downloadIndex = 0;
-    
+
     do
     {
         int downloadIndex = 0;
@@ -4183,7 +4183,7 @@ void CPICkitFunctions::writeConfigInsideProgramMem(void)
             {
                 break; // for cases where ProgramMemSize%WordsPerLoop != 0
             }
-    
+
             memWord = DeviceBuffers->ProgramMemory[lastBlock++];
             if (DevFile.Families[ActiveFamily].ProgMemShift > 0)
             {
@@ -4225,7 +4225,7 @@ bool CPICkitFunctions::SetProgrammingSpeed(unsigned char speed)
     unsigned char commandArray[BUF_SIZE];
     commandArray[0] = FWCMD_EXECUTE_SCRIPT;
     commandArray[1] = 2;
-    commandArray[2] = SCMD_SET_ICSP_SPEED; 
+    commandArray[2] = SCMD_SET_ICSP_SPEED;
     commandArray[3] = speed;
     return writeUSB(commandArray, 4);
 }
@@ -4249,7 +4249,7 @@ bool CPICkitFunctions::FamilyIsdsPIC33F(void)
 			if (x == 0)
 				return true;
 			return false;
-        }  
+        }
 
 bool CPICkitFunctions::FamilyIsPIC24FJ(void)
         {
@@ -4284,9 +4284,9 @@ bool CPICkitFunctions::SearchDevice(int familyIndex)
 
             // Set VPP voltage by family
 			GetDefaultVpp();
-            if (vppSetPoint < 1)  
+            if (vppSetPoint < 1)
             { // When nominally zero, use VDD voltage
-                SetVppVoltage(vddSetPoint, 0.7F);       
+                SetVppVoltage(vddSetPoint, 0.7F);
             }
             else
             {
@@ -4294,7 +4294,7 @@ bool CPICkitFunctions::SearchDevice(int familyIndex)
             }
 
 			SetProgrammingSpeed(LastICSPSpeed);
-            
+
 			SetMCLR(true);     // assert /MCLR to prevent code execution before programming mode entered.
 			VddOn();
 			Sleep(50);
@@ -4311,10 +4311,10 @@ bool CPICkitFunctions::SearchDevice(int familyIndex)
             ExecuteScript(DevFile.Families[familyIndex].ReadDevIDScript);
             UploadData();
             ExecuteScript(DevFile.Families[familyIndex].ProgExitScript);
-            
-            // Turn off Vdd 
+
+            // Turn off Vdd
 			VddOff();
-			SetMCLR(false); 
+			SetMCLR(false);
 
             // NOTE: parts that only return 2 bytes for DevID will have junk in upper word.  This is OK - it gets masked off
             unsigned int deviceID = (unsigned int)(Usb_read_array[4] * 0x1000000 + Usb_read_array[3] * 0x10000 + Usb_read_array[2] * 256 + Usb_read_array[1]);
@@ -4361,7 +4361,7 @@ bool CPICkitFunctions::SearchDevice(int familyIndex)
             }
 
             if (ActivePart == 0) // not a known part
-            {  
+            {
                 return false;   // we're done
             }
 
@@ -4394,7 +4394,7 @@ unsigned int CPICkitFunctions::ReadVector(void)
 	vector |= (vectortop << 16);
 
 	VddOff();
-	SetMCLR(false);   
+	SetMCLR(false);
 
 	return vector;
 }
@@ -4422,7 +4422,7 @@ void CPICkitFunctions::WriteVector(int vtop, int vbot)
 	RunScript(SCR_PROG_EXIT, 1);
 
 	VddOff();
-	SetMCLR(false);   
+	SetMCLR(false);
 }
 
 /*********************************************************************************************
@@ -4459,13 +4459,13 @@ void CPICkitFunctions::EnterSerialExecution(void)
     commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
     commandArrayp[commOffSet++] = 0x0C;                 // ETAP_EJTAGBOOT
     commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
-    commandArrayp[commOffSet++] = 0x04;                 // MTAP_SW_MTAP       
+    commandArrayp[commOffSet++] = 0x04;                 // MTAP_SW_MTAP
     commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
     commandArrayp[commOffSet++] = 0x07;                 // MTAP_COMMAND
     commandArrayp[commOffSet++] = SCMD_JT2_XFERDATA8_LIT;
     commandArrayp[commOffSet++] = 0xD0;                 // MCHP_DE_ASSERT_RST
     commandArrayp[commOffSet++] = SCMD_JT2_XFERDATA8_LIT;
-    commandArrayp[commOffSet++] = 0xFE;                 // MCHP_EN_FLASH            
+    commandArrayp[commOffSet++] = 0xFE;                 // MCHP_EN_FLASH
 
     writeUSB(commandArrayp, commOffSet);
 }
@@ -4535,7 +4535,7 @@ bool CPICkitFunctions::DownloadPE(void)
     {
         return false;           // yes - abort
     }
-    
+
     // Download the PE loader
     for (int i = 0; i < K_PE_LOADER_LEN; i+=2)
     {
@@ -4593,11 +4593,11 @@ bool CPICkitFunctions::DownloadPE(void)
     commandArrayp[commOffSet++] = 0x00;
     commandArrayp[commOffSet++] = 0xA0;
     commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-    commandArrayp[commOffSet++] = (unsigned char)(K_PE_LEN & 0xFF);// PE_SIZE 
+    commandArrayp[commOffSet++] = (unsigned char)(K_PE_LEN & 0xFF);// PE_SIZE
     commandArrayp[commOffSet++] = (unsigned char)((K_PE_LEN >> 8) & 0xFF);
     commandArrayp[commOffSet++] = 0x00;
-    commandArrayp[commOffSet++] = 0x00; 
-    
+    commandArrayp[commOffSet++] = 0x00;
+
     writeUSB(commandArrayp, commOffSet);
     if (BusErrorCheck())    // Any timeouts?
     {
@@ -4663,16 +4663,16 @@ bool CPICkitFunctions::DownloadPE(void)
         commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
         commandArrayp[commOffSet++] = (unsigned char)numLoops;
         for (i = 0; i < numLoops; i++)
-        {            
+        {
             commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_BUF;
         }
         writeUSB(commandArrayp, commOffSet);
         if (BusErrorCheck())    // Any timeouts?
         {
             return false;           // yes - abort
-        } 
+        }
     }
-    
+
     // STEP 8 - Jump to PE
     commOffSet = 0;
     commandArrayp[commOffSet++] = FWCMD_CLR_DOWNLOAD_BUFFER;
@@ -4739,7 +4739,7 @@ bool CPICkitFunctions::PEBlankCheck(unsigned int startAddress, unsigned int leng
     commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
     commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
     commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
-    commandArrayp[commOffSet++] = 0x00;     
+    commandArrayp[commOffSet++] = 0x00;
     commandArrayp[commOffSet++] = 0x00;
     commandArrayp[commOffSet++] = 0x06;     // BLANK_CHECK
     commandArrayp[commOffSet++] = 0x00;
@@ -4747,12 +4747,12 @@ bool CPICkitFunctions::PEBlankCheck(unsigned int startAddress, unsigned int leng
     commandArrayp[commOffSet++] = (unsigned char)(startAddress & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((startAddress >> 8) & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((startAddress >> 16) & 0xFF);
-    commandArrayp[commOffSet++] = (unsigned char)((startAddress >> 24) & 0xFF);              
+    commandArrayp[commOffSet++] = (unsigned char)((startAddress >> 24) & 0xFF);
     commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
     commandArrayp[commOffSet++] = (unsigned char)(lengthBytes & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 8) & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 16) & 0xFF);
-    commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 24) & 0xFF);                                
+    commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 24) & 0xFF);
     commandArrayp[commOffSet++] = SCMD_JT2_GET_PE_RESP;
     writeUSB(commandArrayp, commOffSet);
     if (BusErrorCheck())    // Any timeouts?
@@ -4777,7 +4777,7 @@ int CPICkitFunctions::PEGetCRC(unsigned int startAddress, unsigned int lengthByt
     int commOffSet = 0;
     commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
     commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
-    commandArrayp[commOffSet++] = 21;   // was 19, increased because delay added 
+    commandArrayp[commOffSet++] = 21;   // was 19, increased because delay added
     commandArrayp[commOffSet++] = SCMD_JT2_SENDCMD;
     commandArrayp[commOffSet++] = 0x0E;                 // ETAP_FASTDATA
     commandArrayp[commOffSet++] = SCMD_JT2_XFRFASTDAT_LIT;
@@ -4796,7 +4796,7 @@ int CPICkitFunctions::PEGetCRC(unsigned int startAddress, unsigned int lengthByt
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 16) & 0xFF);
     commandArrayp[commOffSet++] = (unsigned char)((lengthBytes >> 24) & 0xFF);
     commandArrayp[commOffSet++] = SCMD_DELAY_LONG;
-    commandArrayp[commOffSet++] = 0x0b; // 5.46ms*11 = 60,1 ms. Tests with PIC32MX170F256B showed that minimum needed 
+    commandArrayp[commOffSet++] = 0x0b; // 5.46ms*11 = 60,1 ms. Tests with PIC32MX170F256B showed that minimum needed
                                         // delay is 10*long with PICkit2. With PICkit3, no delay is needed at all.
                                         // To be checked if 512 kB chips require longer delay.
     commandArrayp[commOffSet++] = SCMD_JT2_GET_PE_RESP;
@@ -4816,7 +4816,7 @@ int CPICkitFunctions::PEGetCRC(unsigned int startAddress, unsigned int lengthByt
     {
         return 0;
     }
-    
+
     if ((Usb_read_array[3] != 8) || (Usb_read_array[1] != 0)) // response code 0 = success
     {
         return 0;
@@ -4838,13 +4838,13 @@ int CPICkitFunctions::addInstruction(unsigned char* commandarray, unsigned int i
     commandarray[offset++] = (unsigned int)((instruction >> 24) & 0xFF);
     return offset;
 }
-        
+
 bool CPICkitFunctions::PE_DownloadAndConnect(void)
 {
     // VDD must already be on!
     printf("Downloading Programming Executive...\n");
 	fflush(stdout);
-    
+
     //if (_tcsncmp(DevFile.PartsList[ActivePart].PartName, "TCHIP-USB-MX2", 13) == 0 ||
     //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX2", 8) == 0 ||
     //    _tcsncmp(DevFile.PartsList[ActivePart].PartName, "PIC32MX1", 8) == 0)
@@ -4868,10 +4868,10 @@ bool CPICkitFunctions::PE_DownloadAndConnect(void)
         RunScript(SCR_PROG_EXIT, 1);
         return false;
     }
-    
+
     EnterSerialExecution();
     DownloadPE();
-    int PEVersion = ReadPEVersion();
+    unsigned int PEVersion = ReadPEVersion();
     // if (PEVersion != K_PIC32_PE_VERSION)
     if (PEVersion != CPIC32PE::pe_Version)
         {
@@ -4893,12 +4893,12 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
 	int commOffSet;
 
     SetMCLR(true);     // assert /MCLR to prevent code execution before programming mode entered.
-    VddOn();      
-    
+    VddOn();
+
     if (!PE_DownloadAndConnect())
     {
         return false;
-    }  
+    }
 
     unsigned char upload_buffer[UPLOAD_BUFFER_SIZE];
 
@@ -4906,7 +4906,7 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
     int bootMemP32 = (int)DevFile.PartsList[ActivePart].BootFlash;
     progMemP32 -= bootMemP32; // boot flash at upper end of prog mem.
 
-    // Read Program Memory =====================================================================================  
+    // Read Program Memory =====================================================================================
 	int bytesPerWord = DevFile.Families[ActiveFamily].BytesPerLocation;
 	int scriptRunsToFillUpload = UPLOAD_BUFFER_SIZE /
 		(DevFile.PartsList[ActivePart].ProgMemRdWords * bytesPerWord);
@@ -4932,7 +4932,7 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
 				commOffSet = addInstruction(commandArrayp, (address + (unsigned int)(i * DevFile.PartsList[ActivePart].ProgMemRdWords * bytesPerWord)), commOffSet);
 			}
 			writeUSB(commandArrayp, commOffSet);
-	    
+
 			for (j = 0; j < runs; j++)
 			{
 				//RunScriptUploadNoLen2(SCR_PROGMEM_RD, scriptRunsToFillUpload);
@@ -4957,8 +4957,8 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
 					if (bite < bytesPerWord)
 					{
 						memWord |= (unsigned int)upload_buffer[uploadIndex + bite++] << 24;
-					}                  
-					uploadIndex += bite;	
+					}
+					uploadIndex += bite;
 					DeviceBuffers->ProgramMemory[wordsRead++] = memWord;
 					if (wordsRead == progMemP32)
 					{
@@ -5035,7 +5035,7 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
     DeviceBuffers->UserIDs[0] = (unsigned int)upload_buffer[uploadIndex];
     DeviceBuffers->UserIDs[1] = (unsigned int)upload_buffer[uploadIndex + 1];
     //timijk: quick fix for PIC32MX1xx/2xx
-   //uploadIndex += bytesPerWord; 
+   //uploadIndex += bytesPerWord;
     if (DevFile.PartsList[ActivePart].ConfigAddr != DevFile.PartsList[ActivePart].UserIDAddr)
     {
         uploadIndex += bytesPerWord;
@@ -5047,13 +5047,13 @@ bool CPICkitFunctions::PIC32Read(bool progmem, bool uidmem, bool cfgmem)
         DeviceBuffers->ConfigWords[cfg] = (unsigned int)upload_buffer[uploadIndex++];
         DeviceBuffers->ConfigWords[cfg] |= (unsigned int)(upload_buffer[uploadIndex++] << 8);
     }
-             
+
 
     RunScript(SCR_PROG_EXIT, 1);
 
 	timerStop();
     return true; // success
-}        
+}
 
 bool CPICkitFunctions::PIC32BlankCheck(void)
 {
@@ -5070,7 +5070,7 @@ bool CPICkitFunctions::PIC32BlankCheck(void)
     progMemP32 -= bootMemP32; // boot flash at upper end of prog mem.
     int bytesPerWord = DevFile.Families[ActiveFamily].BytesPerLocation;
 
-    // Check Program Memory ====================================================================================    
+    // Check Program Memory ====================================================================================
     if (!PEBlankCheck(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(progMemP32*bytesPerWord)))
     {
         _tcsncpy_s(ReadError.memoryType, "Program", 7);
@@ -5101,10 +5101,10 @@ bool CPICkitFunctions::PIC32BlankCheck(void)
 
     RunScript(SCR_PROG_EXIT, 1);
 	VddOff();
-    
-    return true;            
+
+    return true;
 }
-    
+
 bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 {
 	unsigned char commandArrayp[BUF_SIZE];
@@ -5121,9 +5121,9 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 	int progMemP32 = (int)DevFile.PartsList[ActivePart].ProgramMem;
 	int bootMemP32 = (int)DevFile.PartsList[ActivePart].BootFlash;
 	progMemP32 -= bootMemP32; // boot flash at upper end of prog mem.
-    
+
     // Write Program Memory ====================================================================================
-    
+
 	// Write 512 bytes (128 words) per memory row - so need 2 downloads per row.
     // MX1xx, MX2xx: (32 words) per memory row - one download per row.
     // timijk
@@ -5136,13 +5136,13 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
         wordsPerLoop = 32;
     }
     else { wordsPerLoop = 128; }
-    
+
 	if (progmem)
 	{
 		// First, find end of used Program Memory
 		int endOfBuffer = FindLastUsedInBuffer(DeviceBuffers->ProgramMemory,
 										DevFile.Families[ActiveFamily].BlankValue, progMemP32 - 1);
-		// align end on next loop boundary                 
+		// align end on next loop boundary
 		int writes = (endOfBuffer + 1) / wordsPerLoop;
 		if (((endOfBuffer + 1) % wordsPerLoop) > 0)
 		{
@@ -5152,32 +5152,32 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
 			writes = 2; // 1024 bytes min
 
 		timerStart((_TCHAR*)"Write Flash", endOfBuffer / wordsPerLoop);
-	    
+
 		// Send PROGRAM command header
-        //timijk 
+        //timijk
         if (wordsPerLoop == 128) PEProgramHeader(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(writes * 512));
         else PEProgramHeader(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(writes * 128));
 
 		// First block of data
 		int index = 0;
-		
+
         //timijk
         if (wordsPerLoop == 128) PEProgramSendBlock(index, false); // no response
         else PEProgramSendBlock2(index, false);
 
         writes--;
 		timerPrint();
-	    
+
 		do
 		{
 			index += wordsPerLoop;
             //timijk
             if (wordsPerLoop == 128) PEProgramSendBlock(index, true); // response
             else PEProgramSendBlock2(index, true); // response
-            
+
             timerPrint();
 		} while (--writes > 0);
-	    
+
 		// get last response
 		commOffSet = 0;
 		commandArrayp[commOffSet++] = FWCMD_CLR_UPLOAD_BUFFER;
@@ -5209,7 +5209,7 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
             endOfBuffer = 1;
         else
             endOfBuffer -= progMemP32;
-		// align end on next loop boundary                 
+		// align end on next loop boundary
 		writes = (endOfBuffer + 1) / wordsPerLoop;
 		if (((endOfBuffer + 1) % wordsPerLoop) > 0)
 		{
@@ -5230,7 +5230,7 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
         //timijk
         if (wordsPerLoop == 128) PEProgramSendBlock(index, false); // no response
         else PEProgramSendBlock2(index, false);
-        
+
         writes--;
 
 		do
@@ -5295,11 +5295,11 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
         if (cfgmem)
         {
             unsigned int cfgBuf[4];
-            
+
             cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
             cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
 
-            
+
             cfgBuf[0] |= (DeviceBuffers->ConfigWords[1] << 16);
             cfgBuf[0] |= ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
             cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
@@ -5525,7 +5525,7 @@ bool CPICkitFunctions::P32Write(bool progmem, bool uidmem, bool cfgmem)
         }
     }
 
-    
+
     return true;
 }
 
@@ -5596,7 +5596,7 @@ void CPICkitFunctions::PEProgramSendBlock(int index, bool peResp)
     commandArray[commOffset++] = SCR_PROGMEM_WR_PREP; // should not be remapped
     commandArray[commOffset++] = 1; // once
     writeUSB(commandArray, commOffset);
-    
+
     // 2nd half
     dnldIndex = 0;
     for (i = 0; i < 64; i++)
@@ -5631,7 +5631,7 @@ void CPICkitFunctions::PEProgramSendBlock(int index, bool peResp)
     else
         commandArray[commOffset++] = SCR_PROGMEM_WR_PREP; // should not be remapped
     commandArray[commOffset++] = 1; // once
-    writeUSB(commandArray, commOffset);        
+    writeUSB(commandArray, commOffset);
 }
 
 
@@ -5715,11 +5715,11 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
 	if (progmem)
 	{
 		// Verify Program Memory ====================================================================================
-	    
+
 		bufferCRC = p32CRC_buf(DeviceBuffers->ProgramMemory, 0, (unsigned int)progMemP32);
-	    
+
 		deviceCRC = PEGetCRC(K_P32_PROGRAM_FLASH_START_ADDR, (unsigned int)(progMemP32 * bytesPerWord));
-	    
+
         // printf("bufferCRC  = 0x%x\n", bufferCRC);
         // printf("deviceCRC  = 0x%x\n", deviceCRC);
 
@@ -5731,12 +5731,12 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
 			VddOff();
 			return false;
 		}
-        
+
 		// Verify Boot Memory ====================================================================================
 		bufferCRC = p32CRC_buf(DeviceBuffers->ProgramMemory, (unsigned int)progMemP32, (unsigned int)bootMemP32);
 
 		deviceCRC = PEGetCRC(K_P32_BOOT_FLASH_START_ADDR, (unsigned int)(bootMemP32 * bytesPerWord));
-        
+
 		if (bufferCRC != deviceCRC)
 		{
 			_tcsncpy_s(ReadError.memoryType, "Boot", 4);
@@ -5744,15 +5744,15 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
 			VddOff();
 			return false;
 
-		} 
-        
+		}
+
 	}
 
-    // Verify User ID Memory ====================================================================================  
+    // Verify User ID Memory ====================================================================================
     if (uidmem)
 	{
         if (DevFile.PartsList[ActivePart].ConfigAddr == DevFile.PartsList[ActivePart].UserIDAddr)
-        {   // PIC32MX1xx/2xx 
+        {   // PIC32MX1xx/2xx
             /*
             unsigned int cfgBuf[1];
             cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
@@ -5773,7 +5773,7 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
             printf("deviceCRC  = 0x%x\n", deviceCRC);
 
             unsigned int idBuf[1];
-            idBuf[0] = 
+            idBuf[0] =
 
             printf("cfgBuf[0] = 0x%x\n", cfgBuf[0]);
 
@@ -5787,7 +5787,7 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
             }
             */
         }
-        else // PIC32MX3xx/4xx 
+        else // PIC32MX3xx/4xx
         {
             unsigned int cfgBuf[1];
             cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
@@ -5806,21 +5806,21 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
                 return false;
             }
         }
-        
+
 	}
 
-    // Verify Config Memory ====================================================================================  
+    // Verify Config Memory ====================================================================================
     if (cfgmem)
 	{
         if (DevFile.PartsList[ActivePart].ConfigAddr == DevFile.PartsList[ActivePart].UserIDAddr)
         {
             // For PIC32MX1xx and 2xx, user ID and config memory are verified simultaneously!
-            
+
             unsigned int cfgBuf[4];
-            
+
             cfgBuf[0] = DeviceBuffers->UserIDs[0] & 0xFF;
             cfgBuf[0] |= (DeviceBuffers->UserIDs[1] & 0xFF) << 8;
-            
+
             cfgBuf[0] |= (DeviceBuffers->ConfigWords[1] << 16);
             cfgBuf[0] |= ((~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[1] & DevFile.PartsList[ActivePart].ConfigBlank[1]) << 16);
             cfgBuf[1] = DeviceBuffers->ConfigWords[2] | (DeviceBuffers->ConfigWords[3] << 16);
@@ -5849,7 +5849,7 @@ bool CPICkitFunctions::P32Verify(bool writeVerify, bool progmem, bool uidmem, bo
             }
         }
         else
-        {   // PIC32MX3xx/4xx 
+        {   // PIC32MX3xx/4xx
             unsigned int cfgBuf[3];
             cfgBuf[0] = DeviceBuffers->ConfigWords[0] | (DeviceBuffers->ConfigWords[1] << 16);
             cfgBuf[0] |= (~(unsigned int)DevFile.PartsList[ActivePart].ConfigMasks[0] & DevFile.PartsList[ActivePart].ConfigBlank[0])
@@ -5885,7 +5885,7 @@ int CPICkitFunctions::p32CRC_buf(unsigned int* buffer, unsigned int startIdx, un
 {
     unsigned int CRC_POLY = 0x11021;
     unsigned int CRC_SEED = 0xFFFF; //0x84CF;
-    
+
     unsigned int A, B1, B2;
     unsigned int CurByte;
     unsigned int CurCRC = CRC_SEED;
@@ -5916,10 +5916,10 @@ int CPICkitFunctions::p32CRC_buf(unsigned int* buffer, unsigned int startIdx, un
                     CurCRC ^= CRC_POLY;
             }
         }
-    }            
+    }
 
    return (int)(CurCRC & 0xFFFF);
-    
+
 }
 
 /*********************************************************************************************
@@ -5935,28 +5935,28 @@ void CPICkitFunctions::DisablePE33(void)
 bool CPICkitFunctions::DownloadPE33(void)
         {
 			CdsP33_PE P33PE;
-        
+
             RunScript(SCR_PROG_ENTRY, 1);
             // Erase Executive Memory
             ExecuteScript(DevFile.PartsList[ActivePart].DebugWriteVectorScript);
-            
+
             // Set address
             if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
             { // if prog mem address set script exists for this part
                 DownloadAddress3(0x800000); // start of exec memory
                 RunScript(SCR_PROGMEM_WR_PREP, 1);
             }
-            
+
             int instruction = 0;
             unsigned int workaround = 0;
             int commOffSet = 0;
             unsigned char commandArrayp[BUF_SIZE];
-            
+
             // Program the exec in 16 rows
 			int row, section, word;
             for (row = 0; row < 16; row++)
             {
-                // Download a 64-instruction row 
+                // Download a 64-instruction row
                 for (section = 0; section < 4; section++)
                 {
                     commOffSet = 0;
@@ -5970,7 +5970,7 @@ bool CPICkitFunctions::DownloadPE33(void)
                     {
                         commandArrayp[commOffSet++] = (unsigned char)(P33PE.dsPIC33_PE_Code[instruction] & 0xFF);
                         commandArrayp[commOffSet++] = (unsigned char)((P33PE.dsPIC33_PE_Code[instruction] >> 8) & 0xFF);
-                        commandArrayp[commOffSet++] = (unsigned char)((P33PE.dsPIC33_PE_Code[instruction] >> 16) & 0xFF); 
+                        commandArrayp[commOffSet++] = (unsigned char)((P33PE.dsPIC33_PE_Code[instruction] >> 16) & 0xFF);
                         instruction++;
                     }
                     workaround = P33PE.dsPIC33_PE_Code[instruction - 4];
@@ -6069,7 +6069,7 @@ bool CPICkitFunctions::DownloadPE33(void)
                 commandArrayp[1] = (unsigned char)(commOffSet - 2);  // script length
                 writeUSB(commandArrayp, commOffSet);
             }
-            
+
             // VERIFY PE
             // Set address
             if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
@@ -6077,7 +6077,7 @@ bool CPICkitFunctions::DownloadPE33(void)
                 DownloadAddress3(0x800000); // start of exec memory
                 RunScript(SCR_PROGMEM_ADDRSET, 1);
             }
-            
+
             // verify the exec in 32 sections
             unsigned char upload_buffer[UPLOAD_BUFFER_SIZE];
             instruction = 0;
@@ -6102,12 +6102,12 @@ bool CPICkitFunctions::DownloadPE33(void)
                     }
                 }
             }
-            
+
             RunScript(SCR_PROG_EXIT, 1);
-            
+
             return true;
         }
-        
+
 bool CPICkitFunctions::PE33_Connect(void)
         {
             RunScript(SCR_PROG_ENTRY, 1);
@@ -6139,7 +6139,7 @@ bool CPICkitFunctions::PE33_Connect(void)
 				RunScript(SCR_PROG_EXIT, 1);
                 return false;
             }
-            
+
 			RunScript(SCR_PROG_EXIT, 1);
 
             // It looks like there is a PE there.  Try talking to the PE directly:
@@ -6212,7 +6212,7 @@ bool CPICkitFunctions::PE33_Connect(void)
                 RunScript(SCR_PROG_EXIT, 1);
                 return false;
             }
-            
+
             // Passed sanity check; verify version.
             commOffSet = 0;
             commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
@@ -6249,7 +6249,7 @@ bool CPICkitFunctions::PE33_Connect(void)
                 RunScript(SCR_PROG_EXIT, 1);
                 return false;
             }
-            
+
             // Do not exit programming mode if we successfully find a PE
             return true;
         }
@@ -6261,10 +6261,10 @@ bool CPICkitFunctions::PE33_DownloadAndConnect(void)
             //ICSPSpeedRestore = LastICSPSpeed;
             if (LastICSPSpeed < 2)
                 SetProgrammingSpeed(2);
-            
+
             // See if the PE already exists
             if (!PE33_Connect())
-            { // it doesn't, download it    
+            { // it doesn't, download it
                 printf("Downloading Programming Executive...\n");
 				fflush(stdout);
                 if (!DownloadPE33())
@@ -6301,7 +6301,7 @@ bool CPICkitFunctions::PE33DoBlankCheck(unsigned int lengthWords)
             // Use QBLANK (0xA)
             int commOffSet = 0;
             unsigned char commandArrayp[BUF_SIZE];
-            
+
             lengthWords++; // command arg is length + 1
 
             commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
@@ -6327,7 +6327,7 @@ bool CPICkitFunctions::PE33DoBlankCheck(unsigned int lengthWords)
 
             // wait 2 seconds for the results.
             Sleep(2000);
-                
+
             // get results
             commOffSet = 0;
             commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
@@ -6466,7 +6466,7 @@ bool CPICkitFunctions::PE33Write(int endOfBuffer)
             {
                 return false;
             }
-        
+
             unsigned char downloadBuffer[DOWNLOAD_BUFFER_SIZE];
             int wordsPerLoop = 64;
             int wordsWritten = 0;
@@ -6480,7 +6480,7 @@ bool CPICkitFunctions::PE33Write(int endOfBuffer)
 				unsigned int memWord;
                 for (word = 0; word < wordsPerLoop; word+=2)
                 {
-                    // Put in packed format for PE  
+                    // Put in packed format for PE
                     memWord = DeviceBuffers->ProgramMemory[wordsWritten++];
                     downloadBuffer[downloadIndex + 1] = BitReverseTable[(memWord & 0xFF)];
                     //checksumPk2Go += (byte) (memWord & 0xFF);
@@ -6500,9 +6500,9 @@ bool CPICkitFunctions::PE33Write(int endOfBuffer)
                     memWord >>= 8;
                     downloadBuffer[downloadIndex + 2] = BitReverseTable[(memWord & 0xFF)];
                     //checksumPk2Go += (byte)(memWord & 0xFF);
-                    
+
                     downloadIndex += 6;
-                            
+
                 }
                 // download data
                 int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
@@ -6588,7 +6588,7 @@ bool CPICkitFunctions::PE33VerifyCRC(void)
                 return false;
             }
 			timerStart((_TCHAR*)"Verify Flash", 1);
-        
+
             // Use CRCP (0xC)
             int commOffSet = 0;
             unsigned char commandArrayp[BUF_SIZE];
@@ -6663,7 +6663,7 @@ bool CPICkitFunctions::PE33VerifyCRC(void)
 
             if (deviceCRC == bufferCRC)
                 return true;
-            
+
             return false;
         }
 
@@ -6683,7 +6683,7 @@ unsigned short CPICkitFunctions::CalcCRCProgMem(void)
                 CRC33_Calculate((unsigned char)(memWord & 0xFF), &CRC_Value);
                 CRC33_Calculate((unsigned char)((memWord >> 8) & 0xFF), &CRC_Value);
             }
-            
+
             return (unsigned short)(CRC_Value & 0xFFFF);
         }
 
@@ -6726,27 +6726,27 @@ bool CPICkitFunctions::useProgExec33(void)
 bool CPICkitFunctions::DownloadPE24F(void)
         {
 			CP24F_PE P24FPE;
-        
+
             RunScript(SCR_PROG_ENTRY, 1);
             // Erase Executive Memory
             ExecuteScript(DevFile.PartsList[ActivePart].DebugWriteVectorScript);
-            
+
             // Set address
             if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
             { // if prog mem address set script exists for this part
                 DownloadAddress3(0x800000); // start of exec memory
                 RunScript(SCR_PROGMEM_WR_PREP, 1);
             }
-            
+
             int instruction = 0;
             int commOffSet = 0;
             unsigned char commandArrayp[BUF_SIZE];
-            
+
             // Program the exec in 8 rows
 			int row, section, word;
             for (row = 0; row < 8; row++)
             {
-                // Download a 64-instruction row 
+                // Download a 64-instruction row
                 for (section = 0; section < 4; section++)
                 {
                     commOffSet = 0;
@@ -6760,7 +6760,7 @@ bool CPICkitFunctions::DownloadPE24F(void)
                     {
                         commandArrayp[commOffSet++] = (unsigned char)(P24FPE.PIC24F_PE_Code[instruction] & 0xFF);
                         commandArrayp[commOffSet++] = (unsigned char)((P24FPE.PIC24F_PE_Code[instruction] >> 8) & 0xFF);
-                        commandArrayp[commOffSet++] = (unsigned char)((P24FPE.PIC24F_PE_Code[instruction] >> 16) & 0xFF); 
+                        commandArrayp[commOffSet++] = (unsigned char)((P24FPE.PIC24F_PE_Code[instruction] >> 16) & 0xFF);
                         instruction++;
                     }
                     writeUSB(commandArrayp, commOffSet);
@@ -6822,7 +6822,7 @@ bool CPICkitFunctions::DownloadPE24F(void)
                 commandArrayp[1] = (unsigned char)(commOffSet - 2);  // script length
                 writeUSB(commandArrayp, commOffSet);
             }
-            
+
             // VERIFY PE
             // Set address
             if (DevFile.PartsList[ActivePart].ProgMemWrPrepScript != 0)
@@ -6830,7 +6830,7 @@ bool CPICkitFunctions::DownloadPE24F(void)
                 DownloadAddress3(0x800000); // start of exec memory
                 RunScript(SCR_PROGMEM_ADDRSET, 1);
             }
-            
+
             // verify the exec in 16 sections
             unsigned char upload_buffer[UPLOAD_BUFFER_SIZE];
             instruction = 0;
@@ -6855,9 +6855,9 @@ bool CPICkitFunctions::DownloadPE24F(void)
                     }
                 }
             }
-            
+
             RunScript(SCR_PROG_EXIT, 1);
-            
+
             return true;
         }
 
@@ -6894,7 +6894,7 @@ bool CPICkitFunctions::PE24F_Connect(void)
             }
 
 			RunScript(SCR_PROG_EXIT, 1);
-            
+
             // It looks like there is a PE there.  Try talking to the PE directly:
             int commOffSet = 0;
             unsigned char commandArrayp[BUF_SIZE];
@@ -6965,7 +6965,7 @@ bool CPICkitFunctions::PE24F_Connect(void)
                 RunScript(SCR_PROG_EXIT, 1);
                 return false;
             }
-            
+
             // Passed sanity check; verify version.
             commOffSet = 0;
             commandArrayp[commOffSet++] = FWCMD_EXECUTE_SCRIPT;
@@ -7002,7 +7002,7 @@ bool CPICkitFunctions::PE24F_Connect(void)
                 RunScript(SCR_PROG_EXIT, 1);
                 return false;
             }
-            
+
             // Do not exit programming mode if we successfully find a PE
             return true;
         }
@@ -7014,10 +7014,10 @@ bool CPICkitFunctions::PE24F_DownloadAndConnect(void)
             //ICSPSpeedRestore = LastICSPSpeed;
             if (LastICSPSpeed < 2)
                 SetProgrammingSpeed(2);
-            
+
             // See if the PE already exists
             if (!PE24F_Connect())
-            { // it doesn't, download it    
+            { // it doesn't, download it
                 printf("Downloading Programming Executive...\n");
 				fflush(stdout);
                 if (!DownloadPE24F())
@@ -7276,7 +7276,7 @@ bool CPICkitFunctions::PE24FWrite(int endOfBuffer)
 				int cfg;
                 for (cfg = DevFile.PartsList[ActivePart].ConfigWords; cfg > 0; cfg--)
                 {
-                    DeviceBuffers->ProgramMemory[endOfBuffer - cfg] &= 
+                    DeviceBuffers->ProgramMemory[endOfBuffer - cfg] &=
                                 (0xFF0000 | (unsigned int)DevFile.PartsList[ActivePart].ConfigBlank[DevFile.PartsList[ActivePart].ConfigWords - cfg]);
                 }
             }
@@ -7294,7 +7294,7 @@ bool CPICkitFunctions::PE24FWrite(int endOfBuffer)
 				unsigned int memWord;
                 for (word = 0; word < wordsPerLoop; word+=2)
                 {
-                    // Put in packed format for PE  
+                    // Put in packed format for PE
                     memWord = DeviceBuffers->ProgramMemory[wordsWritten++];
                     downloadBuffer[downloadIndex + 1] = BitReverseTable[(memWord & 0xFF)];
                     //checksumPk2Go += (byte) (memWord & 0xFF);
@@ -7314,9 +7314,9 @@ bool CPICkitFunctions::PE24FWrite(int endOfBuffer)
                     memWord >>= 8;
                     downloadBuffer[downloadIndex + 2] = BitReverseTable[(memWord & 0xFF)];
                     //checksumPk2Go += (byte)(memWord & 0xFF);
-                    
+
                     downloadIndex += 6;
-                            
+
                 }
                 // download data
                 int dataIndex = DataClrAndDownload(downloadBuffer, DOWNLOAD_BUFFER_SIZE, 0);
@@ -7404,7 +7404,7 @@ bool CPICkitFunctions::PE24FVerify(bool writeVerify, int lastLocation, bool PECo
 					return false;
 				}
 			}
-            
+
             if (!writeVerify)
                 lastLocation = (int)DevFile.PartsList[ActivePart].ProgramMem;
 
@@ -7520,4 +7520,3 @@ bool CPICkitFunctions::useProgExec24F(void)
             }
             return false;
         }
-
