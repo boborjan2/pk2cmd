@@ -35,6 +35,30 @@ extern "C"{
 	#include "strnatcmp.h"
 }
 
+unsigned long _g_start_tick;
+#ifndef WIN32
+#include <time.h>
+unsigned long GetTickCount()
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+#endif
+
+void _tprintf(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+#if 0
+	unsigned long tick = GetTickCount();
+	printf("+%lums:  ", tick - _g_start_tick);
+	_g_start_tick = tick;
+#endif
+	vprintf(fmt, args);
+	va_end(args);
+}
+
 Ccmd_app::Ccmd_app(void)
 {
 	preserveEEPROM = false;
@@ -58,6 +82,8 @@ void Ccmd_app::PK2_CMD_Entry(int argc, _TCHAR* argv[])
 	processArgvForSpaces(argc, argv);
 	argc = nargc;
 	argv = nargv;
+
+	_g_start_tick = GetTickCount();
 
 	// Check for help display requests
 	if (checkHelp1(argc, argv))
@@ -87,11 +113,14 @@ void Ccmd_app::PK2_CMD_Entry(int argc, _TCHAR* argv[])
 	}
 	else
 	{ // no -B, check PATH
+		strcpy(tempString, "/usr/share/pk2/PK2DeviceFile.dat");
+#if 0
 		_tsearchenv_s("PK2DeviceFile.dat", "PATH", tempString);
 		if (_tcslen(tempString) < 17)
 		{
 			_tcsncpy_s(tempString, "PK2DeviceFile.dat", 17);
 		}
+#endif
 	}
 	if (!PicFuncs.ReadDeviceFile(tempString))
 	{
@@ -694,16 +723,16 @@ bool Ccmd_app::selectUnitArg(int argc, _TCHAR* argv[])
 						//{
 						//	len = printf("%d          -", j);
 						//}
-						
+
 						len = printf("%d        %s", j, PicFuncs.PicKitModelname[PicFuncs.type()]);
-                                                						
-						
+
+
                                                 while (len < 21)
 						{
 							printf(" ");
 							len++;
 						}
-                                                
+
                                                 if (_tcsncmp(readString, "PIC18F2550", 10) == 0 )
 						   //|| ((PicFuncs.type() == Pickit3 || PicFuncs.type() == pkob) && PicFuncs.PK3_AppVersion.type == 0x99))
 						{
@@ -716,7 +745,7 @@ bool Ccmd_app::selectUnitArg(int argc, _TCHAR* argv[])
 						{
 							len += printf("%s", readString);
 						}
-                                                
+
 						while (len < 38)
 						{
 							printf(" ");
@@ -921,7 +950,7 @@ bool Ccmd_app::priority1Args(int argc, _TCHAR* argv[], bool preserveArgs)
 					if (!preserveArgs)
 						argv[i] = (char*)"";
 					break;
-				
+
 				case 'Q':
 				case 'q':
 					// Disable PE
@@ -949,14 +978,29 @@ bool Ccmd_app::priority1Args(int argc, _TCHAR* argv[], bool preserveArgs)
 					break;
 
 				case 'W':
-				case 'w':
+				case 'w': {
 					// External power target
-					float vdd, vpp;
 					PicFuncs.SetSelfPowered(true);
+					float vdd, vpp, minvdd = 0.0;
+					if(argv[i][2]) {
+						minvdd = (float)_tstof(&argv[i][2]);
+					}
 					PicFuncs.ReadPICkitVoltages(&vdd, &vpp);
+
+					if(minvdd) {
+						printf("Waiting for Vdd to reach %.2fV\n", minvdd);
+						while(vdd < minvdd) {
+							usleep(100000);
+							PicFuncs.ReadPICkitVoltages(&vdd, &vpp);
+							printf("\rVdd = %.2fV", vdd); fflush(stdout);
+						}
+						printf("\n");
+					}
+
 					PicFuncs.SetVddSetPoint(vdd);
 					if (!preserveArgs)
 						argv[i] = (char *) "";
+				}
 					break;
 
 				case 'X':
@@ -1016,7 +1060,7 @@ bool Ccmd_app::priority1Args(int argc, _TCHAR* argv[], bool preserveArgs)
 					{
 						if (tempi < 0x08)		// Addresses 0..7 are reserved
 							tempi += 0x50;		// If specified, treat them as A0..2 chip selects on EEPROMs
-						
+
 						if (tempi > 0x77)		// Addresses 0x78..0x7F are reserved
 						{
 							tempi = 0x77;		// Don't allow to use them
@@ -1129,338 +1173,363 @@ bool Ccmd_app::priority2Args(int argc, _TCHAR* argv[])
 	// Prep PICkit 2 (set Vdd, vpp, download scripts)
 	PicFuncs.PrepPICkit2();
 
-	for (i = 1; i < argc; i++)
-	{
-		// -C Blank Check
-		if ((checkSwitch(argv[i])) && ((argv[i][1] == 'C') || (argv[i][1] == 'c')) && ret)
+	if(ret && findSwitch(argc, argv, 'c')) {
+		if (PicFuncs.FamilyIsKeeloq())
 		{
-			if (PicFuncs.FamilyIsKeeloq())
-			{
-				printf("BlankCheck not supported for KEELOQ devices.\n");
-				fflush(stdout);
-				ReturnCode = INVALID_CMDLINE_ARG;
-				ret = false;
-			}
-			else if (PicFuncs.FamilyIsMCP())
-			{
-				printf("BlankCheck not supported for MCP devices.\n");
-				fflush(stdout);
-				ReturnCode = INVALID_CMDLINE_ARG;
-				ret = false;
-			}
-			else if (PicFuncs.ReadDevice(BLANK_CHECK, true, true, true, true))
-			{
-				printf("Device is blank\n");
-				fflush(stdout);
-			}
-			else
-			{
-				printf("%s memory is NOT blank.\n\n", PicFuncs.ReadError.memoryType);
-				printMemError();
-				ret = false;
-			}
+			printf("BlankCheck not supported for KEELOQ devices.\n");
+			fflush(stdout);
+			ReturnCode = INVALID_CMDLINE_ARG;
+			ret = false;
+		}
+		else if (PicFuncs.FamilyIsMCP())
+		{
+			printf("BlankCheck not supported for MCP devices.\n");
+			fflush(stdout);
+			ReturnCode = INVALID_CMDLINE_ARG;
+			ret = false;
+		}
+		else if (PicFuncs.ReadDevice(BLANK_CHECK, true, true, true, true))
+		{
+			printf("Device is blank\n");
+			fflush(stdout);
+		}
+		else
+		{
+			printf("%s memory is NOT blank.\n\n", PicFuncs.ReadError.memoryType);
+			printMemError();
+			ret = false;
 		}
 	}
 
-	for (i = 1; i < argc; i++)
-	{
-		// -U Overwrite Cal
-		if ((checkSwitch(argv[i])) && ((argv[i][1] == 'U') || (argv[i][1] == 'u')) && ret)
+	_TCHAR *arg;
+
+	if(ret && (arg = findSwitch(argc, argv, 'u'))) {
+		if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].OSSCALSave)
 		{
-			if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].OSSCALSave)
-			{
-				for (j = 1; j < argc; j++)
+			if(findSwitch(argc, argv, 'm')) {
+				ret = getValue(&PicFuncs.DeviceBuffers->OSCCAL, &arg[2]);
+				if (ret)
 				{
-					if ((checkSwitch(argv[j])) && ((argv[j][1] == 'M') || (argv[j][1] == 'm')))
-					{
-						ret = getValue(&PicFuncs.DeviceBuffers->OSCCAL, &argv[i][2]);
-						if (ret)
-						{
-							PicFuncs.OverwriteOSCCAL = true;
-						}
-						else
-						{
-							printf("-U Error parsing value.\n");
-							fflush(stdout);
-							ReturnCode = INVALID_CMDLINE_ARG;
-						}
-					}
+					PicFuncs.OverwriteOSCCAL = true;
 				}
-				if (!PicFuncs.OverwriteOSCCAL)
+				else
 				{
-					printf("-U Overwrite OSCCAL must be used in conjunction with the -M program command.\n");
+					printf("-U Error parsing value.\n");
 					fflush(stdout);
-					ret = false;
 					ReturnCode = INVALID_CMDLINE_ARG;
 				}
 			}
-			else
+			if (!PicFuncs.OverwriteOSCCAL)
 			{
-					printf("-U Overwrite OSCCAL cannot be used with this device.\n");
-					fflush(stdout);
-					ret = false;
-					ReturnCode = INVALID_CMDLINE_ARG;
+				printf("-U Overwrite OSCCAL must be used in conjunction with the -M program command.\n");
+				fflush(stdout);
+				ret = false;
+				ReturnCode = INVALID_CMDLINE_ARG;
 			}
 		}
-	}
-
-	for (i = 1; i < argc; i++)
-	{
-		// -E Erase
-		if ((checkSwitch(argv[i])) && ((argv[i][1] == 'E') || (argv[i][1] == 'e')) && ret)
+		else
 		{
-			if (PicFuncs.FamilyIsKeeloq())
-			{
-				printf("Erase not supported for KEELOQ devices.\n");
+				printf("-U Overwrite OSCCAL cannot be used with this device.\n");
 				fflush(stdout);
-				ReturnCode = INVALID_CMDLINE_ARG;
 				ret = false;
-			}
-			else if (PicFuncs.FamilyIsMCP())
-			{
-				printf("Erase not supported for MCP devices.\n");
-				fflush(stdout);
 				ReturnCode = INVALID_CMDLINE_ARG;
-				ret = false;
-			}
-			else if (PicFuncs.FamilyIsEEPROM()
-				&& (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] != SPI_FLASH_BUS) //Jka
-				&& (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] != MICROWIRE_BUS)
-				&& (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] != UNIO_BUS))
-			{ // FLASH / Microwire / UNIO have a true "chip erase".  Other devices must write every byte blank.
-				printf("Erasing Device...\n");
-				fflush(stdout);
-				if (!PicFuncs.SerialEEPROMErase())
-				{
-					ret = false;
-					ReturnCode = OPFAILURE;
-				}
-			}
-			else
-			{
-				printf("Erasing Device...\n");
-				fflush(stdout);
-				PicFuncs.EraseDevice(true, !preserveEEPROM, &usingLowVoltageErase);
-			}
 		}
 	}
 
-	for (i = 1; i < argc; i++)
-	{
+	if(ret && (arg = findSwitch(argc, argv, 'e'))) {
+		if (PicFuncs.FamilyIsKeeloq())
+		{
+			printf("Erase not supported for KEELOQ devices.\n");
+			fflush(stdout);
+			ReturnCode = INVALID_CMDLINE_ARG;
+			ret = false;
+		}
+		else if (PicFuncs.FamilyIsMCP())
+		{
+			printf("Erase not supported for MCP devices.\n");
+			fflush(stdout);
+			ReturnCode = INVALID_CMDLINE_ARG;
+			ret = false;
+		}
+		else if (PicFuncs.FamilyIsEEPROM()
+			&& (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] != SPI_FLASH_BUS) //Jka
+			&& (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] != MICROWIRE_BUS)
+			&& (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] != UNIO_BUS))
+		{ // FLASH / Microwire / UNIO have a true "chip erase".  Other devices must write every byte blank.
+			printf("Erasing Device...\n");
+			fflush(stdout);
+			if (!PicFuncs.SerialEEPROMErase())
+			{
+				ret = false;
+				ReturnCode = OPFAILURE;
+			}
+		}
+		else
+		{
+			_tprintf("Erasing Device...\n");
+			fflush(stdout);
+			PicFuncs.EraseDevice(true, !preserveEEPROM, &usingLowVoltageErase);
+		}
+	}
+
+	if(ret && (arg = findSwitch(argc, argv, 'm', &i))) {
 		// -M Program
-		if ((checkSwitch(argv[i])) && ((argv[i][1] == 'M') || (argv[i][1] == 'm')) && ret)
+		if (hexLoaded)
 		{
-			if (hexLoaded)
-			{
-				bool noProgEntryForVerify = false;
-				bool verify = true;
-				bool argError = true;
+			bool noProgEntryForVerify = false;
+			bool verify = true;
+			bool argError = true;
+			bool immVerify = false;
+			bool immVerified = true;
 
-				if (argv[i][2] == 0)
-				{ // no specified region - erase then program all
-					if (PicFuncs.FamilyIsEEPROM())
+			if (arg[2] == 0)
+			{ // no specified region - erase then program all
+				if (PicFuncs.FamilyIsEEPROM())
+				{
+					// SPI FLASH device must be erased before programming..
+					if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS)
 					{
-						// SPI FLASH device must be erased before programming..
-						if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigMasks[PROTOCOL_CFG] == SPI_FLASH_BUS)
-						{
-							printf("Erase before program...\n");
-							PicFuncs.EraseDevice(true, !preserveEEPROM, &usingLowVoltageErase);
-						}
-						printf("Write...\n");
-						ret = PicFuncs.EepromWrite(WRITE_EE);
-						verify = ret;
-						argError = ret;
-						if (!ret)
-						{
-							ReturnCode = PGMVFY_ERROR;
-						}
-						program = true;
-						eedata = false;
-						userid = false;
-						config = false;
+						printf("Erase before program...\n");
+						PicFuncs.EraseDevice(true, !preserveEEPROM, &usingLowVoltageErase);
+					}
+					printf("Write...\n");
+					ret = PicFuncs.EepromWrite(WRITE_EE);
+					verify = ret;
+					argError = ret;
+					if (!ret)
+					{
+						ReturnCode = PGMVFY_ERROR;
+					}
+					program = true;
+					eedata = false;
+					userid = false;
+					config = false;
+				}
+				else
+				{
+					bool rewriteEE = PicFuncs.EraseDevice(true, !preserveEEPROM, &usingLowVoltageErase);
+					program = true;
+					eedata = (rewriteEE || !preserveEEPROM);
+					userid = true;
+					config = true;
+					if (PicFuncs.FamilyIsPIC32())
+					{
+						// Program everything.
+						noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
 					}
 					else
 					{
-						bool rewriteEE = PicFuncs.EraseDevice(true, !preserveEEPROM, &usingLowVoltageErase);
-						program = true;
-						eedata = (rewriteEE || !preserveEEPROM);
-						userid = true;
-						config = true;
-						if (PicFuncs.FamilyIsPIC32())
-						{
-							// Program everything.
+						// program all but configs and verify, as configs may contain code protect
+						noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, false, usingLowVoltageErase);
+					}
+					if (!noProgEntryForVerify)
+					{ // if it is true, then configs are in program memory
+						ret = PicFuncs.ReadDevice(VERIFY_MEM_SHORT, program, eedata, userid, false);
+						verify = ret;
+						argError = ret;
+						if (ret)
+						{ // now program configs
+							program = false;
+							eedata = false;
+							userid = false;
 							noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
 						}
 						else
 						{
-							// program all but configs and verify, as configs may contain code protect
-							noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, false, usingLowVoltageErase);
-						}
-						if (!noProgEntryForVerify)
-						{ // if it is true, then configs are in program memory
-							ret = PicFuncs.ReadDevice(VERIFY_MEM_SHORT, program, eedata, userid, false);
-							verify = ret;
-							argError = ret;
-							if (ret)
-							{ // now program configs
-								program = false;
-								eedata = false;
-								userid = false;
-								noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
-							}
-							else
-							{
-								ReturnCode = PGMVFY_ERROR;
-							}
+							ReturnCode = PGMVFY_ERROR;
 						}
 					}
 				}
-				else
+			}
+			else
+			{
+				program = false;
+				eedata = false;
+				userid = false;
+				config = false;
+				for (j = 2; j < (int)_tcslen(arg); j++)
 				{
-					program = false;
-					eedata = false;
-					userid = false;
-					config = false;
-					for (j = 2; j < (int)_tcslen(argv[i]); j++)
+					switch (arg[j])
 					{
-						switch (argv[i][j])
-						{
-							case 'p':
-							case 'P':
-								program = true;
-								if (PicFuncs.FamilyIsEEPROM())
+						case '+':
+							immVerify = true;
+							break;
+						case 'p':
+						case 'P':
+							program = true;
+							if (PicFuncs.FamilyIsEEPROM())
+							{
+								ret = PicFuncs.EepromWrite(WRITE_EE);
+								argError = ret;
+								verify = ret;
+							}
+							else
+							{
+								noProgEntryForVerify = PicFuncs.WriteDevice(program, false, false, false, usingLowVoltageErase);
+								if(immVerify) {
+									immVerified = immVerified && PicFuncs.ReadDevice(
+										noProgEntryForVerify ? VERIFY_NOPRG_ENTRY : VERIFY_MEM_SHORT, program, false, false, false);
+
+									//printf("Progmem Immediate Verify %s.\n", immVerified ? "Succeeded" : "Failed");
+								}
+								else {
+									immVerified = false;
+								}
+
+							}
+							break;
+
+						case 'e':
+						case 'E':
+							if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].EEMem > 0)
+							{
+								if (preserveEEPROM)
 								{
-									ret = PicFuncs.EepromWrite(WRITE_EE);
-									argError = ret;
-									verify = ret;
+									//printf("Cannot both program and preserve EEData memory.\n");
+									fflush(stdout);
+									ReturnCode = INVALID_CMDLINE_ARG;
+									ret = false;
 								}
 								else
 								{
-									noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
-								}
-								break;
+									eedata = true;
+									noProgEntryForVerify = PicFuncs.WriteDevice(false, eedata, false, false, usingLowVoltageErase);
+									if(immVerify) {
+										immVerified = immVerified && PicFuncs.ReadDevice(
+											noProgEntryForVerify ? VERIFY_NOPRG_ENTRY : VERIFY_MEM_SHORT, false, eedata, false, false);
 
-							case 'e':
-							case 'E':
-								if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].EEMem > 0)
-								{
-									if (preserveEEPROM)
+											//printf("EEData Immediate Verify %s.\n", immVerified ? "Succeeded" : "Failed");
+									}
+									else {
+										immVerified = false;
+									}
+								}
+							}
+							else
+								ret = false;
+							break;
+
+						case 'i':
+						case 'I':
+							if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].UserIDWords > 0)
+							{
+								userid = true;
+								noProgEntryForVerify = PicFuncs.WriteDevice(false, false, userid, false, usingLowVoltageErase);
+								if(immVerify) {
+									immVerified = immVerified && PicFuncs.ReadDevice(
+										noProgEntryForVerify ? VERIFY_NOPRG_ENTRY : VERIFY_MEM_SHORT, false, false, userid, false);
+
+									//printf("UserID Immediate Verify %s.\n", immVerified ? "Succeeded" : "Failed");
+								}
+								else {
+									immVerified = false;
+								}
+							}
+							else
+								ret = false;
+							break;
+
+						case 'c':
+						case 'C':
+							// check for devices with config in program memory - can't program seperately.
+							if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigWords > 0)
+							{
+									int configLocation = (int)PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigAddr /
+															PicFuncs.DevFile.Families[PicFuncs.ActiveFamily].ProgMemHexBytes;
+									int configWords = PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigWords;
+									if ((configLocation < (int)PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ProgramMem) && (configWords > 0))
 									{
-										printf("Cannot both program and preserve EEData memory.\n");
+										printf("This device has configuration words in Program Memory.\nThey cannot be programmed separately.\n");
 										fflush(stdout);
 										ReturnCode = INVALID_CMDLINE_ARG;
 										ret = false;
 									}
 									else
 									{
-										eedata = true;
-										noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
+										config = true;
+										noProgEntryForVerify = PicFuncs.WriteDevice(false, false, false, config, usingLowVoltageErase);
+										if(immVerify) {
+											immVerified = immVerified && PicFuncs.ReadDevice(
+												noProgEntryForVerify ? VERIFY_NOPRG_ENTRY : VERIFY_MEM_SHORT, false, false, false, config);
+
+											//printf("Config Immediate Verify %s.\n", immVerified ? "Succeeded" : "Failed");
+										}
+										else {
+											immVerified = false;
+										}
 									}
-								}
-								else
-									ret = false;
-								break;
 
-							case 'i':
-							case 'I':
-								if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].UserIDWords > 0)
-								{
-									userid = true;
-									noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
-								}
-								else
-									ret = false;
-								break;
-
-							case 'c':
-							case 'C':
-								// check for devices with config in program memory - can't program seperately.
-								if (PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigWords > 0)
-								{
-										int configLocation = (int)PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigAddr /
-																PicFuncs.DevFile.Families[PicFuncs.ActiveFamily].ProgMemHexBytes;
-										int configWords = PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ConfigWords;
-										if ((configLocation < (int)PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].ProgramMem) && (configWords > 0))
-										{
-											printf("This device has configuration words in Program Memory.\nThey cannot be programmed separately.\n");
-											fflush(stdout);
-											ReturnCode = INVALID_CMDLINE_ARG;
-											ret = false;
-										}
-										else
-										{
-											config = true;
-											noProgEntryForVerify = PicFuncs.WriteDevice(program, eedata, userid, config, usingLowVoltageErase);
-										}
-								}
-								else
-									ret = false;
-								break;
-
-							case 'v':
-							case 'V':
-								{
-								_tcsncpy_s(tempString, &argv[i][3], _tcslen(argv[i])-3);
-								argv[i] = (char *) "";
-								int k = 1;
-								if (((i+k) < argc) && (!checkSwitch(argv[i+k])))
-								{ // check for space after v
-									_tcscat_s(tempString, argv[i+k]);
-									argv[i + k++] = (char *) "";
-								}
-								int vtop = 0;
-								int vbot = 0;
-								ret = getRange(&vtop, &vbot, tempString);
-								if (ret)
-								{
-									PicFuncs.WriteVector(vtop, vbot);
-								}
-								}
-								break;
-
-							default:
+							}
+							else
 								ret = false;
-						}
+							break;
+
+						case 'v':
+						case 'V':
+							{
+							_tcsncpy_s(tempString, &arg[3], _tcslen(arg)-3);
+							argv[i] = (char *) "";
+							int k = 1;
+							if (((i+k) < argc) && (!checkSwitch(argv[i+k])))
+							{ // check for space after v
+								_tcscat_s(tempString, argv[i+k]);
+								argv[i + k++] = (char *) "";
+							}
+							int vtop = 0;
+							int vbot = 0;
+							ret = getRange(&vtop, &vbot, tempString);
+							if (ret)
+							{
+								PicFuncs.WriteVector(vtop, vbot);
+							}
+							}
+							break;
+
+						default:
+							ret = false;
 					}
 				}
-				if (ret || !argError)
+			}
+			if (ret || !argError)
+			{
+				if(immVerify && immVerified) {
+					_tprintf("Immediate Verify Succeeded.\n");
+				}
+				else if (verify)
 				{
-					if (verify)
-					{
-						if (noProgEntryForVerify)
-							ret = PicFuncs.ReadDevice(VERIFY_NOPRG_ENTRY, program, eedata, userid, config);
-						else
-							ret = PicFuncs.ReadDevice(VERIFY_MEM_SHORT, program, eedata, userid, config);
-					}
-					printf("PICkit Program Report\n");
-					printf("%s\n", stime);
-					printf("Device Type: %s\n\n", PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].PartName);
-					if (ret)
-					{
-						printf("Program Succeeded.\n");
-						fflush(stdout);
-					}
+					if (noProgEntryForVerify)
+						ret = PicFuncs.ReadDevice(VERIFY_NOPRG_ENTRY, program, eedata, userid, config);
 					else
-					{
-						printf("%s Memory Errors\n\n", PicFuncs.ReadError.memoryType);
-						printMemError();
-						ReturnCode = PGMVFY_ERROR;
-					}
+						ret = PicFuncs.ReadDevice(VERIFY_MEM_SHORT, program, eedata, userid, config);
+				}
+				printf("PICkit Program Report\n");
+				printf("%s\n", stime);
+				printf("Device Type: %s\n\n", PicFuncs.DevFile.PartsList[PicFuncs.ActivePart].PartName);
+				if (ret)
+				{
+					printf("Program Succeeded.\n");
+					fflush(stdout);
 				}
 				else
 				{
-					printf("Invalid Memory region entered for program\n");
-					fflush(stdout);
-					ReturnCode = INVALID_CMDLINE_ARG;
+					printf("%s Memory Errors\n\n", PicFuncs.ReadError.memoryType);
+					printMemError();
+					ReturnCode = PGMVFY_ERROR;
 				}
 			}
 			else
 			{
-				printf("No Image loaded.\nPlease load a hex file before programming or verifying.\n");
+				printf("Invalid Memory region entered for program %d %d\n", ret, argError);
 				fflush(stdout);
 				ReturnCode = INVALID_CMDLINE_ARG;
-				ret = false;
 			}
+		}
+		else
+		{
+			printf("No Image loaded.\nPlease load a hex file before programming or verifying.\n");
+			fflush(stdout);
+			ReturnCode = INVALID_CMDLINE_ARG;
+			ret = false;
 		}
 	}
 
@@ -1913,7 +1982,7 @@ bool Ccmd_app::priority4Args(int argc, _TCHAR* argv[])
 				case 'r':
 					// Release /MCLR
 					PicFuncs.SetMCLR(false);
-					resetPK3OnExit = false;		// Added 7.6.2022 
+					resetPK3OnExit = false;		// Added 7.6.2022
 					break;
 
 				case 'T':
@@ -1928,7 +1997,7 @@ bool Ccmd_app::priority4Args(int argc, _TCHAR* argv[])
 					}
 					else {
 						PicFuncs.VddOn();
-						resetPK3OnExit = false;		// Added 7.6.2022 
+						resetPK3OnExit = false;		// Added 7.6.2022
 					}
 					break;
 
@@ -2283,9 +2352,22 @@ bool Ccmd_app::getDecValue(unsigned int* value, _TCHAR* str_value)
 	return true;
 }
 
-bool Ccmd_app::checkSwitch(_TCHAR* argv)
+_TCHAR Ccmd_app::checkSwitch(_TCHAR* argv)
 {
-	return ((argv[0] == '-') || (argv[0] == '/'));
+	return ((argv[0] == '-') || (argv[0] == '/')) ? tolower(argv[1]) : 0;
+}
+
+_TCHAR *Ccmd_app::findSwitch(int argc, _TCHAR* argv[], _TCHAR sw, int *index)
+{
+	for(_TCHAR **s = argv; argc > 0; argc--, s++) {
+		if (checkSwitch(*s) == sw) {
+			if(index) {
+				*index = (int)(s - argv);
+			}
+			return *s;
+		}
+	}
+	return NULL;
 }
 
 bool Ccmd_app::findPICkit2(int unitIndex)
@@ -2347,8 +2429,8 @@ bool Ccmd_app::findPICkit2(int unitIndex)
 			{
 				return true;
 			}
-			
-			if (PicFuncs.PK3_MagicKey == 0x336b50)		// MagicKey indicates 
+
+			if (PicFuncs.PK3_MagicKey == 0x336b50)		// MagicKey indicates
 			{
 				printf("%s found with Operating System v%d.%02d.%02d\n", PicFuncs.PicKitModelname[PicFuncs.type()],
 					PicFuncs.FirmwareVersion.major, PicFuncs.FirmwareVersion.minor, PicFuncs.FirmwareVersion.dot);
@@ -2378,7 +2460,7 @@ bool Ccmd_app::findPICkit2(int unitIndex)
 				printf("Please disconnect and reconnect USB cable and try again.\n");
 				printf("If problem persists, try to update %s firmware with MPLAB or external programmer.\n", PicFuncs.PicKitModelname[PicFuncs.type()]);
 			}
-			
+
 			//printf("Type is %u\n", PicFuncs.type());
 			//printf("Write status is %u\n", PicFuncs.wrStatus());
 			//printf("Magic Key is %u\n", PicFuncs.PK3_MagicKey);
@@ -3158,7 +3240,7 @@ bool Ccmd_app::checkHelp2(int argc, _TCHAR* argv[], bool loadDeviceFileFailed)
 						{
 							if (PicFuncs.type() == Pickit2 && PicFuncs.FirmwareVersion.major == 118)
 							{
-								printf("OS Firmware Version:   %d.%02d (PICkit2 is in bootloader mode)\n\n", 
+								printf("OS Firmware Version:   %d.%02d (PICkit2 is in bootloader mode)\n\n",
 									PicFuncs.FirmwareVersion.minor, PicFuncs.FirmwareVersion.dot);
 							}
 							else if (PicFuncs.type() == Pickit2 || PicFuncs.PK3_MagicKey == 0x336b50)
@@ -3184,7 +3266,7 @@ bool Ccmd_app::checkHelp2(int argc, _TCHAR* argv[], bool loadDeviceFileFailed)
 							{
 								printf("OS Firmware Version:   Invalid response from %s\n\n", PicFuncs.PicKitModelname[PicFuncs.type()]);
 							}
-							
+
 						}
 						else if (PicFuncs.wrStatus() == writeTimeout)
 						{

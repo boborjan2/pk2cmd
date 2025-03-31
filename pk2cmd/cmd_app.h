@@ -13,7 +13,7 @@
 #define WRONG_OS                    11 // OS firmware must be upgraded
 #define FILE_OPEN_ERROR             15 // returned if a file to read to (-gf..) cannot be opened.
 #define DEVICEFILE_ERROR            24 // the device file was not found or an error occured while loading.
-#define UPDGRADE_ERROR              28 // returned when OS upgrade fails. 
+#define UPDGRADE_ERROR              28 // returned when OS upgrade fails.
 #define PGMVFY_ERROR                34 // returned if program or verify operation fails.
 #define INVALID_CMDLINE_ARG         36
 #define INVALID_HEXFILE             37 // Error reading hex file.
@@ -61,7 +61,8 @@ protected:
 	bool getRange(int* start, int* stop, _TCHAR* str_range);
 	bool getValue(unsigned int* value, _TCHAR* str_value);
 	bool getDecValue(unsigned int* value, _TCHAR* str_value);
-	bool checkSwitch(_TCHAR* argv);
+	_TCHAR checkSwitch(_TCHAR* argv);
+	_TCHAR *findSwitch(int argc, _TCHAR* argv[], _TCHAR sw, int *index = NULL);
 	bool findPICkit2(int unitIndex);
 	void printMemError(void);
 	bool checkDevFilePathOptionB(int argc, _TCHAR* argv[], _TCHAR* path_string);
